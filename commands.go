@@ -13,6 +13,12 @@ func (bot *Bot) setupCommands() {
 	bot.Handle("/follow", bot.follow)
 	bot.Handle("/unfollow", bot.unfollow)
 	bot.Handle("/help", bot.help)
+	bot.Handle("/start", bot.start)
+}
+
+func (bot *Bot) start(msg *tb.Message) {
+	bot.Send(msg.Chat, "Hey, welcome 👋 I'm going to run the /help command for you so you can see what I can do...")
+	bot.help(msg)
 }
 
 func (bot *Bot) follow(msg *tb.Message) {
