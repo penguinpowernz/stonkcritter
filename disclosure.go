@@ -11,6 +11,21 @@ import (
 
 var DisclosuresURL = "https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json"
 
+// {
+// 	"disclosure_year": 2021,
+// 	"disclosure_date": "10/04/2021",    DD/MM/YYYY
+// 	"transaction_date": "2021-09-27",   YYYY-MM-DD
+// 	"owner": "joint",
+// 	"ticker": "BP",
+// 	"asset_description": "BP plc",
+// 	"type": "purchase",
+// 	"amount": "$1,001 - $15,000",
+// 	"representative": "Hon. Virginia Foxx",
+// 	"district": "NC05",
+// 	"ptr_link": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2021/20019557.pdf",
+// 	"cap_gains_over_200_usd": false
+// }
+
 type Disclosure struct {
 	DisclosureYear     int    `json:"disclosure_year"`
 	DisclosureDate     string `json:"disclosure_date"`

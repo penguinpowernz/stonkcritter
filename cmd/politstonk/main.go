@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"time"
@@ -28,6 +29,8 @@ func main() {
 		var dd []politstonk.Disclosure
 		var err error
 
+		// we want to be able to read from a file or S3, so we don't hammer the
+		// providers S3 egress costs during testing
 		switch {
 		case sourceFile != "":
 			dd, err = readFile(sourceFile)
@@ -41,6 +44,11 @@ func main() {
 
 		bot.StoreReps(dd)
 
+		// only get the disclosures from today
+		dd = politstonk.FromDate(dd, time.Now().Format("02/01/2006"))
+
+		fmt.Println("Found", len(dd), "disclosures from today")
+
 		for _, d := range dd {
 			bot.Broadcast(d.String())
 			bot.HandleDisclosure(d)
@@ -51,12 +59,12 @@ func main() {
 }
 
 func readFile(fn string) ([]politstonk.Disclosure, error) {
+	var v []politstonk.Disclosure
 	data, err := ioutil.ReadFile(fn)
 	if err != nil {
-		panic(err)
+		return v, err
 	}
 
-	var v []politstonk.Disclosure
 	err = json.Unmarshal(data, &v)
 	return v, err
 }
