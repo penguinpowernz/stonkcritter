@@ -13,3 +13,11 @@ type Sub struct {
 func (s Sub) String() string {
 	return fmt.Sprintf("%d.%s", s.ChatID, strings.ReplaceAll(s.Topic, " ", "_"))
 }
+
+func (s Sub) IsTickerSub() bool {
+	return isTicker(s.Topic)
+}
+
+func (s Sub) Ticker() string {
+	return strings.ReplaceAll(s.Topic, "$", "")
+}

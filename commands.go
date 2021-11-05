@@ -10,12 +10,12 @@ import (
 func (bot *Bot) follow(msg *tb.Message) {
 	topic := msg.Payload
 
-	if len(topic) > 6 {
-		bot.Send(msg.Chat, "that looks like a representatives name, let me see if I can find them in my list...")
+	if !isTicker(topic) {
+		bot.Send(msg.Chat, "let me see if I can find that congress critter in my list...")
 		names, err := bot.searchReps(topic)
 
 		if err != nil {
-			bot.Send(msg.Chat, "sorry, failed to search: "+err.Error())
+			bot.Send(msg.Chat, "😔 sorry, failed to search: "+err.Error())
 			return
 		}
 
@@ -31,18 +31,16 @@ func (bot *Bot) follow(msg *tb.Message) {
 
 		bot.Send(msg.Chat, "Cool, found "+names[0]+" in my list, using that")
 		topic = names[0]
-	} else {
-		bot.Send(msg.Chat, "OK that looks like a stock ticker")
 	}
 
 	s := Sub{ChatID: int32(msg.Chat.ID), Topic: topic}
 	err := bot.store.Insert(s.String(), s)
 	if err != nil {
-		bot.Send(msg.Chat, "sorry, failed to save that: "+err.Error())
+		bot.Send(msg.Chat, "😔 sorry, failed to save that: "+err.Error())
 		return
 	}
 
-	bot.Send(msg.Chat, "OK saved that")
+	bot.Send(msg.Chat, "OK saved 👍")
 }
 
 func (bot *Bot) unfollow(msg *tb.Message) {
@@ -50,11 +48,11 @@ func (bot *Bot) unfollow(msg *tb.Message) {
 	s := Sub{ChatID: int32(msg.Chat.ID), Topic: msg.Payload}
 	err := bot.store.Delete(s.String(), s)
 	if err != nil {
-		bot.Send(msg.Chat, "sorry, failed to delete that: "+err.Error())
+		bot.Send(msg.Chat, "😔 sorry, failed to delete that: "+err.Error())
 		return
 	}
 
-	bot.Send(msg.Chat, "OK deleted that")
+	bot.Send(msg.Chat, "OK unfollowed 👍")
 }
 
 func (bot *Bot) list(msg *tb.Message) {
@@ -62,7 +60,7 @@ func (bot *Bot) list(msg *tb.Message) {
 	err := bot.store.Find(&subs, badgerhold.Where("ChatID").Eq(msg.Chat.ID))
 
 	if err != nil {
-		bot.Send(msg.Chat, "sorry, failed to search: "+err.Error())
+		bot.Send(msg.Chat, "😔 sorry, failed to search: "+err.Error())
 		return
 	}
 

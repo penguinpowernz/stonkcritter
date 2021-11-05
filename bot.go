@@ -25,14 +25,15 @@ type Bot struct {
 
 func (bot *Bot) HandleDisclosure(d Disclosure) {
 	bot.store.ForEach(&badgerhold.Query{}, func(s Sub) {
-		if len(s.Topic) < 6 {
-			if s.Topic == d.Ticker {
+		if s.IsTickerSub() {
+			if d.Ticker == s.Ticker() {
 				bot.Send(tb.ChatID(s.ChatID), d.String())
 			}
-		} else {
-			if strings.Contains(d.Representative, s.Topic) {
-				bot.Send(tb.ChatID(s.ChatID), d.String())
-			}
+			return
+		}
+
+		if strings.Contains(d.Representative, s.Topic) {
+			bot.Send(tb.ChatID(s.ChatID), d.String())
 		}
 	})
 }
