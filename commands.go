@@ -7,6 +7,14 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
+func (bot *Bot) setupCommands() {
+	bot.Handle("/findrep", bot.findrep)
+	bot.Handle("/list", bot.list)
+	bot.Handle("/follow", bot.follow)
+	bot.Handle("/unfollow", bot.unfollow)
+	bot.Handle("/help", bot.help)
+}
+
 func (bot *Bot) follow(msg *tb.Message) {
 	topic := msg.Payload
 
@@ -100,9 +108,15 @@ func (bot *Bot) findrep(msg *tb.Message) {
 	bot.Send(msg.Chat, "OK, it's gotta be one of these:\n"+strings.Join(names, "\n"))
 }
 
-func (bot *Bot) setupCommands() {
-	bot.Handle("/findrep", bot.findrep)
-	bot.Handle("/list", bot.list)
-	bot.Handle("/follow", bot.follow)
-	bot.Handle("/unfollow", bot.unfollow)
+func (bot *Bot) help(msg *tb.Message) {
+	txt := []string{}
+	txt = append(txt, "This bot will help you keep track of the stocks that the US congress critters trade.  Bear in mind that they have 45 days to disclose their trades, and most have started leaving this to the last day possible due to public srutiny of their trades.")
+	txt = append(txt, "")
+	txt = append(txt, "/help - `this help text`")
+	txt = append(txt, "/follow <thing> - `the main function, allows you to follow a $TICKER or a congress critter by name.  The name maybe converted to the full name as it appears in the disclosure source`")
+	txt = append(txt, "/list - `this will list everything that you are following`")
+	txt = append(txt, "/unfollow <thing> - `unfollow something from your list`")
+	txt = append(txt, "/findrep <name> - `if you're having trouble finding a congress critter by name, you can use this to search for the name you should use in the follow command`")
+
+	bot.Send(msg.Chat, strings.Join(txt, "\n"), tb.ModeMarkdownV2)
 }
