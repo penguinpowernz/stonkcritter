@@ -1,70 +1,83 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"fmt"
-	"io/ioutil"
+	"log"
 	"os"
 	"time"
 
+	"github.com/dgraph-io/badger/v3"
+	"github.com/gin-gonic/gin"
 	"github.com/penguinpowernz/politstonk"
+	"github.com/timshannon/badgerhold/v4"
 )
 
 func main() {
-	var readFromS3 bool
-	var sourceFile string
-	flag.BoolVar(&readFromS3, "-s", false, "read from the S3 source file")
-	flag.StringVar(&sourceFile, "-f", "", "read from the given source file")
+	var logBC bool
+	var setCursor, fileSource string
+	flag.StringVar(&fileSource, "f", "./all_transactions.json", "read from the given source file")
+	flag.StringVar(&setCursor, "x", "", "set the current cursor, YYYY-MM-DD")
+	flag.BoolVar(&logBC, "n", false, "only log broadcast messages, don't send to Telegram")
 	flag.Parse()
 
-	var bcChannel int32
-	bot, err := politstonk.NewBot(os.Getenv("BOT_TOKEN"), bcChannel)
+	opts := badgerhold.DefaultOptions
+	opts.Options = badger.DefaultOptions("data")
+
+	brain, err := badgerhold.Open(opts)
 	if err != nil {
 		panic(err)
 	}
 
+	// update the cursor so we don't have to care about storing
+	// or broadcasting every single discloure ever
+	if setCursor != "" {
+		t, err := time.Parse("2006-01-02", setCursor)
+		if err != nil {
+			log.Fatalf("failed to parse the cursor: %s: %s", setCursor, err)
+		}
+		log.Printf("parsed cursor time as %s", t)
+		d := politstonk.NewDate(t)
+		if err := brain.Upsert("cursor", &d); err != nil {
+			log.Fatalf("failed to save the cursor: %s: %s", setCursor, err)
+		}
+		log.Printf("updated cursor to %s (%s)", d.S, d.Time())
+		os.Exit(0)
+	}
+
+	bot, err := politstonk.NewBot(
+		brain,
+		os.Getenv("BOT_TOKEN"),
+		os.Getenv("BOT_CHANNEL"),
+	)
+
+	bot.LogOnly = logBC
+
+	if err != nil {
+		panic(err)
+	}
+
+	api := gin.Default()
+
+	api.PUT("/disclosures", bot.HandleDisclosures)
+	api.GET("/reps", bot.HandleListReps)
+	go api.Run("localhost:8090")
+
+	// use the
+	var discloser func() ([]politstonk.Disclosure, error)
+	discloser = politstonk.GetDisclosuresFromS3
+	if fileSource != "" {
+		discloser = politstonk.GetDisclosuresFromFile(fileSource)
+	}
+
 	t := time.NewTicker(time.Hour * 24)
 	for {
-		var dd []politstonk.Disclosure
-		var err error
-
-		// we want to be able to read from a file or S3, so we don't hammer the
-		// providers S3 egress costs during testing
-		switch {
-		case sourceFile != "":
-			dd, err = readFile(sourceFile)
-		case readFromS3:
-			dd, err = politstonk.GetDisclosures()
-		}
-
+		dd, err := discloser()
 		if err != nil {
 			panic(err)
 		}
 
-		bot.StoreReps(dd)
+		bot.ConsumeDisclosures(dd)
 
-		// only get the disclosures from today
-		dd = politstonk.FromDate(dd, time.Now().Format("02/01/2006"))
-
-		fmt.Println("Found", len(dd), "disclosures from today")
-
-		for _, d := range dd {
-			bot.Broadcast(d.String())
-			bot.HandleDisclosure(d)
-			time.Sleep(time.Second)
-		}
 		<-t.C
 	}
-}
-
-func readFile(fn string) ([]politstonk.Disclosure, error) {
-	var v []politstonk.Disclosure
-	data, err := ioutil.ReadFile(fn)
-	if err != nil {
-		return v, err
-	}
-
-	err = json.Unmarshal(data, &v)
-	return v, err
 }
