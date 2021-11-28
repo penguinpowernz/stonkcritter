@@ -14,14 +14,15 @@ import (
 
 func main() {
 	var logBC bool
-	var setCursor, fileSource string
+	var setCursor, fileSource, dataDir string
+	flag.StringVar(&dataDir, "d", "./data", "the directory to save bot brain data in")
 	flag.StringVar(&fileSource, "f", "./all_transactions.json", "read from the given source file")
 	flag.StringVar(&setCursor, "x", "", "set the current cursor, YYYY-MM-DD")
 	flag.BoolVar(&logBC, "n", false, "only log broadcast messages, don't send to Telegram")
 	flag.Parse()
 
 	opts := badgerhold.DefaultOptions
-	opts.Options = badger.DefaultOptions("data")
+	opts.Options = badger.DefaultOptions(dataDir)
 
 	brain, err := badgerhold.Open(opts)
 	if err != nil {

@@ -1,4 +1,4 @@
 
 
 build:
-	go build ./cmd/politstonk
+	go build -o bin/stonkcritter ./cmd/politstonk
