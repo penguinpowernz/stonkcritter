@@ -2,9 +2,42 @@
 
 A telegram bot that notifies you when a US congress critter makes a trade on the stock market.
 
-Note this does not index or tell you who has what stocks.  For that, visit the terrific site at
-https://housestockwatcher.com or https://senatestockwatcher.com from which this bot gets it's
-updates.
+Note this does not index or tell you who has what stocks.  For that, visit the terrific sites from which this bot gets it's updates:
+
+* https://housestockwatcher.com
+* https://senatestockwatcher.com
+
+If you have any questions about the data this bot puts out and what it means, you'll probably want to check those sites.  For issues about the bot itself, create an issue.
+
+## Messages
+
+The messages show the congress critters name, what the trade was (purchase/sale etc as an emoji), the ticker and how much money was involved (as an emoji).  It also shows the date the transaction occured and the money figure range.  In most cases, the disclosure date will be the same day that you recieve the message in Telegram.
+
+### Trade Type
+
+|---|---|
+|exchange|🔁|
+|purchase|🤑|
+|sale (full)|🤮|
+|sale (partial)|🤢|
+|Unknown|🤷|
+
+### Trade size
+
+|---|---|
+|$50,000,000 +|💰💰💰💰💰💰💰💰💰|
+|$5,000,001 - $25,000,000|💰💰💰💰💰💰💰💰|
+|$1,000,001 - $5,000,000|💰💰💰💰💰💰💰|
+|$1,000,000 +|💰💰💰💰💰💰💰|
+|$500,001 - $1,000,000|💰💰💰💰💰💰|
+|$250,001 - $500,000|💰💰💰💰💰|
+|$100,001 - $250,000|💰💰💰💰|
+|$50,001 - $100,000|💰💰💰|
+|$15,000 - $50,000|💰💰|
+|$15,001 - $50,000|💰💰|
+|$1,001 - $15,000|💰|
+|$1,000 - $15,000|💰|
+|$1,001 -|💰|
 
 ## Usage
 
