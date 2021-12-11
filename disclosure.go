@@ -90,6 +90,37 @@ type Disclosure struct {
 	CapGainsOver200Usd bool   `json:"cap_gains_over_200_usd,omitempty"`
 }
 
+func (dis Disclosure) CritterTopic() string {
+	return dis.CritterName()
+}
+
+func (dis Disclosure) TickerTopic() string {
+	return "$" + dis.Ticker
+}
+
+func (dis Disclosure) AssetTypeTopic() string {
+	switch dis.AssetType {
+	case "Cryptocurrency":
+		return "#crypto"
+	case "Commodities/Futures Contract":
+		return "#comfuture"
+	case "Non-Public Stock":
+		return "#nopstock"
+	case "Stock Option":
+		return "#opt"
+	case "Corporate Bond":
+		return "#corpbond"
+	case "Other Securities":
+		return "#osec"
+	case "Municipal Security":
+		return "#msec"
+	case "PDF Disclosed Filing":
+		return "#pdf"
+	default:
+		return "#stonk"
+	}
+}
+
 func (dis Disclosure) OwnerString() string {
 	switch strings.ToLower(dis.Owner) {
 	case "self":

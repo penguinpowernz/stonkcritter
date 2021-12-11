@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/timshannon/badgerhold/v4"
@@ -29,6 +28,7 @@ func NewBot(brain *badgerhold.Store, token string, bcChannel string) (*Bot, erro
 		bcChannel:    bcChan,
 		store:        brain,
 		channelLimit: *rate.NewLimiter(rate.Every(time.Minute/19), 1),
+		dmLimit:      *rate.NewLimiter(rate.Every(time.Minute/59), 1),
 	}
 
 	bot.setupCommands()
@@ -42,6 +42,7 @@ type Bot struct {
 	store        *badgerhold.Store
 	LogOnly      bool
 	channelLimit rate.Limiter
+	dmLimit      rate.Limiter
 }
 
 func (bot *Bot) ConsumeDisclosures(dd []Disclosure) {
@@ -68,16 +69,12 @@ func (bot *Bot) ConsumeDisclosures(dd []Disclosure) {
 }
 
 func (bot *Bot) DispatchDisclosure(d Disclosure) {
-	bot.store.ForEach(&badgerhold.Query{}, func(s Sub) {
-		if s.IsTickerSub() {
-			if d.Ticker == s.Ticker() {
-				bot.Send(tb.ChatID(s.ChatID), d.String())
+	bot.store.ForEach(&badgerhold.Query{}, func(s *Sub) {
+		if s.ShouldNotify(d) {
+			bot.dmLimit.Wait(context.Background())
+			if _, err := bot.Send(tb.ChatID(s.ChatID), d.String()); err != nil {
+				log.Println("ERROR: disaptching disclosure:", err)
 			}
-			return
-		}
-
-		if strings.Contains(d.Representative, s.Topic) {
-			bot.Send(tb.ChatID(s.ChatID), d.String())
 		}
 	})
 }
