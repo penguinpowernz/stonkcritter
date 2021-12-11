@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cat <<EOF > /etc/default/stonkcritter
+test -f /etc/default/stonkcritter || cat <<EOF > /etc/default/stonkcritter
 BOT_CHANNEL=-1001708526258
 BOT_TOKEN=
 EOF

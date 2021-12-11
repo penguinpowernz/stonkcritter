@@ -13,12 +13,11 @@ import (
 )
 
 func main() {
-	var logBC, runChat bool
+	var runChat bool
 	var setCursor, fileSource, dataDir string
 	flag.StringVar(&dataDir, "d", "./data", "the directory to save bot brain data in")
-	flag.StringVar(&fileSource, "f", "./all_transactions.json", "read from the given source file instead of S3")
+	flag.StringVar(&fileSource, "f", "", "read from the given source file instead of S3")
 	flag.StringVar(&setCursor, "x", "", "set the current cursor, YYYY-MM-DD")
-	flag.BoolVar(&logBC, "n", false, "only log broadcast messages, don't send to Telegram")
 	flag.BoolVar(&runChat, "chat", false, "enable Telegram communication")
 	flag.Parse()
 
@@ -52,21 +51,16 @@ func main() {
 		os.Getenv("BOT_CHANNEL"),
 	)
 
-	bot.LogOnly = logBC
-
 	if err != nil {
 		panic(err)
 	}
 
+	bot.LogOnly = !runChat
 	api := gin.Default()
 
 	api.PUT("/disclosures", bot.HandleDisclosures)
 	api.GET("/reps", bot.HandleListReps)
 	go api.Run("localhost:8090")
-
-	if !runChat {
-		select {}
-	}
 
 	// use the
 	var discloser func() ([]politstonk.Disclosure, error)

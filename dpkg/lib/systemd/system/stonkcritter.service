@@ -4,9 +4,9 @@ After=network-online.target
 
 [Service]
 User=stonkcritter
-WorkingDir=/home/stonkcritter
+WorkingDirectory=/home/stonkcritter
 EnvironmentFile=/etc/default/stonkcritter
-ExecStart=/usr/bin/stonkcritter -chat
+ExecStart=/usr/bin/stonkcritter -chat -d /home/stonkcritter/data
 Restart=always
 TimeoutStartSec=5
 
