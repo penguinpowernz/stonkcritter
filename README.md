@@ -64,6 +64,7 @@ These are the trade values that come out of the disclosure data:
 ## TODO
 
 - [ ] save the cursor to stop sending the same messages if the service restarts
+- [ ] get the direct message chat working
 
 ## Usage
 
