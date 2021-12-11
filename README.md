@@ -1,6 +1,6 @@
 # stonkcritter
 
-A telegram bot that notifies you when a US congress critter makes a trade on the stock market: https://t.me/stonkcritter
+A telegram bot that notifies you when a US congress critter makes a trade on the stock market: https://t.me/stonkcritter (only running on https://t.me/insidestonks for testing right now)
 
 [![image](https://user-images.githubusercontent.com/4642414/145662011-826cf4a2-457e-4d4b-b806-7897b00991a5.png)](https://t.me/stonkcritter)
 
