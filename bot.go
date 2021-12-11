@@ -1,6 +1,7 @@
 package politstonk
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strconv"
@@ -8,11 +9,11 @@ import (
 	"time"
 
 	"github.com/timshannon/badgerhold/v4"
+	"golang.org/x/time/rate"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
 func NewBot(brain *badgerhold.Store, token string, bcChannel string) (*Bot, error) {
-
 	b, err := tb.NewBot(tb.Settings{Token: token})
 	if err != nil {
 		return nil, err
@@ -24,9 +25,10 @@ func NewBot(brain *badgerhold.Store, token string, bcChannel string) (*Bot, erro
 	}
 
 	bot := &Bot{
-		Bot:       b,
-		bcChannel: bcChan,
-		store:     brain,
+		Bot:          b,
+		bcChannel:    bcChan,
+		store:        brain,
+		channelLimit: *rate.NewLimiter(rate.Every(time.Minute/19), 1),
 	}
 
 	bot.setupCommands()
@@ -35,9 +37,10 @@ func NewBot(brain *badgerhold.Store, token string, bcChannel string) (*Bot, erro
 
 type Bot struct {
 	*tb.Bot
-	bcChannel int64
-	store     *badgerhold.Store
-	LogOnly   bool
+	bcChannel    int64
+	store        *badgerhold.Store
+	LogOnly      bool
+	channelLimit rate.Limiter
 }
 
 func (bot *Bot) ConsumeDisclosures(dd []Disclosure) {
@@ -83,11 +86,11 @@ func (bot *Bot) Broadcast(msg string) {
 		return
 	}
 
+	bot.channelLimit.Wait(context.Background())
 	if _, err := bot.Send(tb.ChatID(bot.bcChannel), msg, tb.ModeMarkdownV2); err != nil {
 		log.Println("MESSAGE", msg)
 		log.Printf("ERROR: sending broadcast %s", err)
 	}
-
 }
 
 func (bot *Bot) UpdateCursor() {
