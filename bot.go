@@ -95,7 +95,7 @@ func (bot *Bot) Broadcast(msg string) {
 
 func (bot *Bot) UpdateCursor() {
 	log.Println("updating cursor to", time.Now().Format("2006-01-02"))
-	if err := bot.store.Upsert("cursor", time.Now()); err != nil {
+	if err := bot.store.Upsert("cursor", NewDate(time.Now())); err != nil {
 		log.Println("ERROR: failed to update the cursor!", err)
 	}
 }
