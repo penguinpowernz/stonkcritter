@@ -94,17 +94,21 @@ func (bot *Bot) Broadcast(msg string) {
 }
 
 func (bot *Bot) UpdateCursor() {
-	// TODO: error checking!!!
-	bot.store.Update("cursor", time.Now())
+	log.Println("updating cursor to", time.Now().Format("2006-01-02"))
+	if err := bot.store.Upsert("cursor", time.Now()); err != nil {
+		log.Println("ERROR: failed to update the cursor!", err)
+	}
 }
 
 func (bot *Bot) GetCursor() Date {
 	var d Date
 	err := bot.store.Get("cursor", &d)
 	if err == badgerhold.ErrNotFound {
+		log.Println("WARNING: no cursor found, creating new one for", time.Now().Format("2006-01-02"))
 		d := NewDate(time.Now())
-		// TODO: error checking!!!
-		bot.store.Insert("cursor", d)
+		if err := bot.store.Insert("cursor", d); err != nil {
+			log.Println("ERROR: failed to insert the cursor!", err)
+		}
 	}
 	return d
 }
