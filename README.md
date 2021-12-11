@@ -15,6 +15,9 @@ The messages show the congress critters name, what the trade was (purchase/sale 
 
 ### Trade Type
 
+These are the types that come out of the disclosure data:
+
+| Sale Type | Emoji|
 |---|---|
 |exchange|🔁|
 |purchase|🤑|
@@ -22,8 +25,11 @@ The messages show the congress critters name, what the trade was (purchase/sale 
 |sale (partial)|🤢|
 |Unknown|🤷|
 
-### Trade size
+### Trade values
 
+These are the trade values that come out of the disclosure data:
+
+| Trade value | Emojis |
 |---|---|
 |$50,000,000 +|💰💰💰💰💰💰💰💰💰|
 |$5,000,001 - $25,000,000|💰💰💰💰💰💰💰💰|
@@ -38,6 +44,7 @@ The messages show the congress critters name, what the trade was (purchase/sale 
 |$1,001 - $15,000|💰|
 |$1,000 - $15,000|💰|
 |$1,001 -|💰|
+|Unknown|🙈|
 
 ## Usage
 
