@@ -1,6 +1,7 @@
 package politstonk
 
 import (
+	"log"
 	"strings"
 
 	"github.com/timshannon/badgerhold/v4"
@@ -8,12 +9,12 @@ import (
 )
 
 func (bot *Bot) setupCommands() {
-	bot.Handle("/findrep", bot.findrep)
-	bot.Handle("/list", bot.list)
-	bot.Handle("/follow", bot.follow)
-	bot.Handle("/unfollow", bot.unfollow)
-	bot.Handle("/help", bot.help)
-	bot.Handle("/start", bot.start)
+	bot.Bot.Handle("/critter", bot.findrep)
+	bot.Bot.Handle("/list", bot.list)
+	bot.Bot.Handle("/ignore", bot.unfollow)
+	bot.Bot.Handle("/watch", bot.follow)
+	bot.Bot.Handle("/help", bot.help)
+	bot.Bot.Handle("/start", bot.start)
 }
 
 func (bot *Bot) start(msg *tb.Message) {
@@ -21,12 +22,38 @@ func (bot *Bot) start(msg *tb.Message) {
 	bot.help(msg)
 }
 
+func (bot *Bot) helpFollow(msg *tb.Message) {
+	m := strings.Join([]string{
+		"You can follow these types of things:",
+		"",
+		"A congress critter, e.g. `Nancy Pelosi` or `Ron Wyden`",
+		"A stock ticker e.g. `$MSFT` or `$AAPL`",
+		// "",
+		// "The following asset types: ",
+		// "  `#crypto` - Cryptocurrency",
+		// "  `#comfuture` - Commodies/Futures Contract",
+		// "  `#nopstock` - Non-Public Stock",
+		// "  `#opts` - Stock Options",
+		// "  `#corpbond` - Corporate Bonds",
+		// "  `#osec` - Other Securities",
+		// "  `#msec` - Municiple Securities",
+		// "  `#pdf` - PDF Disclosed Filing",
+	}, "\n")
+
+	bot.Send(msg.Sender, m, tb.ModeMarkdown)
+}
+
 func (bot *Bot) follow(msg *tb.Message) {
 	topic := msg.Payload
 
+	if topic == "" {
+		bot.helpFollow(msg)
+		return
+	}
+
 	if !isTicker(topic) {
 		bot.Send(msg.Chat, "let me see if I can find that congress critter in my list...")
-		names, err := bot.searchReps(topic)
+		names, err := bot.searchCritters(topic)
 
 		if err != nil {
 			bot.Send(msg.Chat, "😔 sorry, failed to search: "+err.Error())
@@ -94,10 +121,15 @@ func (bot *Bot) findrep(msg *tb.Message) {
 		return
 	}
 
-	names, err := bot.searchReps(search)
+	names, err := bot.searchCritters(search)
 
 	if err != nil {
 		bot.Send(msg.Chat, "sorry, failed to search: "+err.Error())
+		return
+	}
+
+	if len(names) == 0 {
+		bot.Send(msg.Chat, "sorry, couldn't find anyone with that name")
 		return
 	}
 
@@ -111,7 +143,9 @@ func (bot *Bot) findrep(msg *tb.Message) {
 		return
 	}
 
-	bot.Send(msg.Chat, "OK, it's gotta be one of these:\n"+strings.Join(names, "\n"))
+	if _, err := bot.Send(msg.Chat, "OK, it's gotta be one of these:\n"+strings.Join(names, "\n")); err != nil {
+		log.Println("ERROR:", err)
+	}
 }
 
 func (bot *Bot) help(msg *tb.Message) {
@@ -119,10 +153,12 @@ func (bot *Bot) help(msg *tb.Message) {
 	txt = append(txt, "This bot will help you keep track of the stocks that the US congress critters trade.  Bear in mind that they have 45 days to disclose their trades, and most have started leaving this to the last day possible due to public srutiny of their trades.")
 	txt = append(txt, "")
 	txt = append(txt, "/help - `this help text`")
-	txt = append(txt, "/follow <thing> - `the main function, allows you to follow a $TICKER or a congress critter by name.  The name maybe converted to the full name as it appears in the disclosure source`")
+	txt = append(txt, "/watch <thing> - `the main function, allows you to follow a $TICKER or a congress critter by name.  The name maybe converted to the full name as it appears in the disclosure source`")
+	txt = append(txt, "/ignore <thing> - `unfollow something from your list`")
 	txt = append(txt, "/list - `this will list everything that you are following`")
-	txt = append(txt, "/unfollow <thing> - `unfollow something from your list`")
-	txt = append(txt, "/findrep <name> - `if you're having trouble finding a congress critter by name, you can use this to search for the name you should use in the follow command`")
+	txt = append(txt, "/critter <name> - `if you're having trouble finding a congress critter by name, you can use this to search for the name you should use in the follow command`")
 
-	bot.Send(msg.Chat, strings.Join(txt, "\n"), tb.ModeMarkdownV2)
+	if _, err := bot.Send(msg.Chat, strings.Join(txt, "\n"), tb.ModeMarkdown); err != nil {
+		log.Println("ERROR:", err)
+	}
 }

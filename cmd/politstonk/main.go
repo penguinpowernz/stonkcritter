@@ -95,14 +95,13 @@ func main() {
 
 	t := time.NewTicker(time.Hour * 24)
 	for {
+		<-t.C
 		dd, err := discloser()
 		if err != nil {
 			panic(err)
 		}
 
 		bot.ConsumeDisclosures(dd)
-
-		<-t.C
 	}
 }
 

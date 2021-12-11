@@ -8,21 +8,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/timshannon/badgerhold/v4"
 )
 
 func (bot *Bot) HandleListReps(c *gin.Context) {
-	reps := []Rep{}
-	err := bot.store.Find(
-		&reps,
-		new(badgerhold.Query))
+	search := c.Query("q")
+	s, err := bot.searchCritters(search)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
-	}
-	s := []string{}
-	for _, r := range reps {
-		s = append(s, r.Name)
 	}
 	c.JSON(200, s)
 }
@@ -50,7 +43,7 @@ func (bot *Bot) HandleDisclosures(c *gin.Context) {
 
 	dd = Disclosures(dd).After(date)
 
-	bot.StoreReps(dd)
+	bot.StoreCritters(dd)
 	for _, d := range dd {
 		bot.Broadcast(d.String())
 		bot.DispatchDisclosure(d)

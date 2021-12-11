@@ -14,7 +14,7 @@ import (
 )
 
 func NewBot(brain *badgerhold.Store, token string, bcChannel string) (*Bot, error) {
-	b, err := tb.NewBot(tb.Settings{Token: token})
+	b, err := tb.NewBot(tb.Settings{Token: token, Poller: &tb.LongPoller{Timeout: 10 * time.Second}})
 	if err != nil {
 		return nil, err
 	}
@@ -32,6 +32,7 @@ func NewBot(brain *badgerhold.Store, token string, bcChannel string) (*Bot, erro
 	}
 
 	bot.setupCommands()
+	go bot.Start()
 	return bot, nil
 }
 
@@ -46,7 +47,7 @@ type Bot struct {
 func (bot *Bot) ConsumeDisclosures(dd []Disclosure) {
 	log.Printf("consuming %d disclosures", len(dd))
 	log.Println("adding any unknown reps")
-	bot.StoreReps(dd)
+	bot.StoreCritters(dd)
 
 	log.Printf("bot cursor is currently %s", bot.GetCursor())
 	dd = Disclosures(dd).After(bot.GetCursor())
