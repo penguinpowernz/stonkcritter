@@ -15,9 +15,12 @@ If you have any questions about the data this bot puts out and what it means, yo
 
 [![level1techslogo](https://level1techs.com/sites/all/themes/l1/img/black-logo.png)](https://level1techs.com/)
 
-This was done as part of the [Level1Techs Devember competition](https://forum.level1techs.com/t/official-devember-2021-welcome/177940)
+This was done as part of the [Level1Techs Devember competition](https://forum.level1techs.com/t/official-devember-2021-welcome/177940).  Check them out at https://level1techs.com/ or https://www.youtube.com/c/level1techs
 
-Check them out at https://level1techs.com/ or https://www.youtube.com/c/level1techs
+This is running on a Linode server using the Level1Techs coupon: https://linode.com/level1techs
+
+[![image](https://user-images.githubusercontent.com/4642414/145663935-ca14c03f-c80f-4eaf-9dd4-141049720076.png)](https://linode.com/level1techs
+)
 
 ## Messages
 
@@ -57,6 +60,10 @@ These are the trade values that come out of the disclosure data:
 |$1,000 - $15,000|💰|
 |$1,001 -|💰|
 |Unknown|🙈|
+
+## TODO
+
+- [ ] save the cursor to stop sending the same messages if the service restarts
 
 ## Usage
 
