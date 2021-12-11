@@ -11,6 +11,8 @@ If you have any questions about the data this bot puts out and what it means, yo
 
 ## Messages
 
+![image](https://user-images.githubusercontent.com/4642414/145661696-f2f222b4-5ece-4107-a6c3-6251056366c6.png)
+
 The messages show the congress critters name, what the trade was (purchase/sale etc as an emoji), the ticker and how much money was involved (as an emoji).  It also shows the date the transaction occured and the money figure range.  In most cases, the disclosure date will be the same day that you recieve the message in Telegram.
 
 ### Trade Type
