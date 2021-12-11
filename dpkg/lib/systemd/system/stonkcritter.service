@@ -3,8 +3,10 @@ Description=Stonk Critter
 After=network-online.target
 
 [Service]
+User=stonkcritter
+WorkingDir=/home/stonkcritter
 EnvironmentFile=/etc/default/stonkcritter
-ExecStart=/usr/bin/stonkcritter
+ExecStart=/usr/bin/stonkcritter -chat
 Restart=always
 TimeoutStartSec=5
 
