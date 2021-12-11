@@ -11,6 +11,8 @@ Note this does not index or tell you who has what stocks.  For that, visit the t
 
 If you have any questions about the data this bot puts out and what it means, you'll probably want to check those sites.  For issues about the bot itself, create an issue.
 
+This was done as part of the Level1Techs Devember competition: https://forum.level1techs.com/t/official-devember-2021-welcome/177940
+
 ## Messages
 
 ![image](https://user-images.githubusercontent.com/4642414/145661696-f2f222b4-5ece-4107-a6c3-6251056366c6.png)
