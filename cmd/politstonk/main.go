@@ -27,6 +27,8 @@ func main() {
 	flag.StringVar(&loadFile, "loadfile", "", "load the disclosures in the given file via the running bots HTTP API (combine with -x to dump from cursor)")
 	flag.Parse()
 
+	log.SetOutput(os.Stderr)
+
 	if downloadDump {
 		downloadAndDump()
 		os.Exit(0)
