@@ -13,6 +13,8 @@ If you have any questions about the data this bot puts out and what it means, yo
 
 This was done as part of the Level1Techs Devember competition: https://forum.level1techs.com/t/official-devember-2021-welcome/177940
 
+Check them out at https://level1techs.com/ or https://www.youtube.com/c/level1techs
+
 ## Messages
 
 ![image](https://user-images.githubusercontent.com/4642414/145661696-f2f222b4-5ece-4107-a6c3-6251056366c6.png)
