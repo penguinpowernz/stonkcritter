@@ -87,7 +87,7 @@ func (bot *Bot) Broadcast(msg string) {
 	}
 
 	bot.channelLimit.Wait(context.Background())
-	if _, err := bot.Send(tb.ChatID(bot.bcChannel), msg, tb.ModeMarkdownV2); err != nil {
+	if _, err := bot.Send(tb.ChatID(bot.bcChannel), msg, tb.ModeMarkdownV2, tb.NoPreview); err != nil {
 		log.Println("MESSAGE", msg)
 		log.Printf("ERROR: sending broadcast %s", err)
 	}
