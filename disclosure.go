@@ -185,7 +185,9 @@ func GetDisclosuresFromS3() (dd []Disclosure, err error) {
 	if err != nil {
 		return
 	}
-	err = json.Unmarshal(data, &dd)
+	var _dd []Disclosure
+	err = json.Unmarshal(data, &_dd)
+	dd = append(dd, _dd...)
 	return
 }
 
