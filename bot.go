@@ -85,7 +85,7 @@ func (bot *Bot) Broadcast(msg string) {
 
 	if _, err := bot.Send(tb.ChatID(bot.bcChannel), msg, tb.ModeMarkdownV2); err != nil {
 		log.Println("MESSAGE", msg)
-		log.Println("ERROR: sending broadcast %s", err)
+		log.Printf("ERROR: sending broadcast %s", err)
 	}
 
 }

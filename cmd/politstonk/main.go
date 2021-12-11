@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -13,13 +16,31 @@ import (
 )
 
 func main() {
-	var runChat bool
-	var setCursor, fileSource, dataDir string
+	var runChat, downloadDump, pull bool
+	var setCursor, fileSource, dataDir, loadFile string
 	flag.StringVar(&dataDir, "d", "./data", "the directory to save bot brain data in")
 	flag.StringVar(&fileSource, "f", "", "read from the given source file instead of S3")
 	flag.StringVar(&setCursor, "x", "", "set the current cursor, YYYY-MM-DD")
 	flag.BoolVar(&runChat, "chat", false, "enable Telegram communication")
+	flag.BoolVar(&downloadDump, "download", false, "download the disclosures and dump them to STDOUT")
+	flag.BoolVar(&pull, "pull", false, "trigger the HTTP API to pull the disclosures from S3")
+	flag.StringVar(&loadFile, "loadfile", "", "load the disclosures in the given file via the running bots HTTP API (combine with -x to dump from cursor)")
 	flag.Parse()
+
+	if downloadDump {
+		downloadAndDump()
+		os.Exit(0)
+	}
+
+	if loadFile != "" {
+		loadFileAndCursor(loadFile, setCursor)
+		os.Exit(0)
+	}
+
+	if pull {
+		pullS3()
+		os.Exit(0)
+	}
 
 	opts := badgerhold.DefaultOptions
 	opts.Options = badger.DefaultOptions(dataDir)
@@ -60,6 +81,7 @@ func main() {
 
 	api.PUT("/disclosures", bot.HandleDisclosures)
 	api.GET("/reps", bot.HandleListReps)
+	api.POST("/pull_from_s3", bot.HandlePullFromS3)
 	go api.Run("localhost:8090")
 
 	// use the
@@ -79,5 +101,58 @@ func main() {
 		bot.ConsumeDisclosures(dd)
 
 		<-t.C
+	}
+}
+
+func downloadAndDump() {
+	dd, err := politstonk.GetDisclosuresFromS3()
+	if err != nil {
+		panic(err)
+	}
+	data, err := json.Marshal(dd)
+	if err != nil {
+		panic(err)
+	}
+	os.Stdout.Write(data)
+}
+
+func loadFileAndCursor(fn string, cursor string) {
+	r, err := os.Open(fn)
+	if err != nil {
+		panic(err)
+	}
+
+	url := "http://localhost:8090/disclosures"
+	if cursor != "" {
+		url += "?cursor=" + cursor
+	}
+
+	req, err := http.NewRequest(http.MethodPut, url, r)
+	if err != nil {
+		panic(err)
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+
+	if res.StatusCode == http.StatusNoContent {
+		fmt.Println("OK")
+		return
+	}
+
+	fmt.Println("Bad status returned:", res.StatusCode)
+}
+
+func pullS3() {
+	res, err := http.Post("http://localhost:8090/pull_from_s3", "", nil)
+	if err != nil {
+		panic(err)
+	}
+
+	if res.StatusCode == http.StatusNoContent {
+		fmt.Println("OK")
+		return
 	}
 }

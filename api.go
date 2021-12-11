@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -55,5 +56,16 @@ func (bot *Bot) HandleDisclosures(c *gin.Context) {
 		bot.DispatchDisclosure(d)
 	}
 
+	c.Status(204)
+}
+
+func (bot *Bot) HandlePullFromS3(c *gin.Context) {
+	log.Println("downloading disclosures from S3 as per API")
+	dd, err := GetDisclosuresFromS3()
+	if err != nil {
+		panic(err)
+	}
+
+	bot.ConsumeDisclosures(dd)
 	c.Status(204)
 }
