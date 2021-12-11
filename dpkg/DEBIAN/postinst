@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cat <<EOF > /etc/default/stonkcritter
+BOT_CHANNEL=-1001708526258
+BOT_TOKEN=
+EOF
+
+exit 0;

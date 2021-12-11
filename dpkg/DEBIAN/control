@@ -1,0 +1,12 @@
+Package: stonkcritter
+Version: 1.0.0
+Section: misc
+Priority: optional
+Architecture: all
+Maintainer: 
+Essential: no
+Homepage: http://example.com
+Installed-Size: 
+Description: This is a description
+  This is a longer description
+  that takes up multiple lines

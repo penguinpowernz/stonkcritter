@@ -1,0 +1,12 @@
+[Unit]
+Description=Stonk Critter
+After=network-online.target
+
+[Service]
+EnvironmentFile=/etc/default/stonkcritter
+ExecStart=/usr/bin/stonkcritter
+Restart=always
+TimeoutStartSec=5
+
+[Install]
+WantedBy=multi-user.target
