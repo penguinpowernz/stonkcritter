@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/microcosm-cc/bluemonday"
 )
 
 var DisclosuresURLHouse = "https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json"
@@ -67,11 +69,7 @@ func (dis Disclosure) AmountEmojis() string {
 	default:
 		return "🙈"
 	}
-	var x []string
-	for i := 1; i < c; i++ {
-		x = append(x, "💰")
-	}
-	return strings.Join(x, "")
+	return strings.Repeat("💰", c)
 }
 
 func (dis Disclosure) ID() string {
@@ -90,7 +88,13 @@ func (dis Disclosure) ID() string {
 	)
 }
 
-// DisclosedAt gives the time that the trade was disclosed
+// TransactionOn gives the time that the trade was done
+func (dis Disclosure) TransactionOn() time.Time {
+	td, _ := time.Parse("01/02/2006", dis.TransactionDate)
+	return td
+}
+
+// DisclosedOn gives the time that the trade was disclosed
 func (dis Disclosure) DisclosedOn() time.Time {
 	t, err := time.Parse("01/02/2006", dis.DisclosureDate)
 	if err != nil {
@@ -101,26 +105,40 @@ func (dis Disclosure) DisclosedOn() time.Time {
 }
 
 func (dis Disclosure) DaysAgo() string {
-	td, _ := time.Parse("2006-01-02", dis.TransactionDate)
-	return fmt.Sprintf("%d", int((time.Now().Unix()-td.Unix())/86400))
+	return fmt.Sprintf("%d", int((time.Now().Unix()-dis.TransactionOn().Unix())/86400))
+}
+
+func (dis Disclosure) TypeEmoji() string {
+	var adj string
+	switch strings.ToLower(dis.Type) {
+	case "exchange":
+		adj = "🔁"
+	case "purchase":
+		adj = "🤑"
+	case "sale (full)":
+		adj = "🤮"
+	case "sale (partial)":
+		adj = "🤢"
+	default:
+		adj = "🤷"
+	}
+	return adj
 }
 
 func (dis Disclosure) String() string {
-	adj := "🤮"
-	if dis.Type == "purchase" {
-		adj = "🤑"
-	}
-
+	adj := dis.TypeEmoji()
 	moneybags := dis.AmountEmojis()
 
 	l1 := fmt.Sprintf("%s %s `%s` %s", dis.Representative, adj, dis.Ticker, moneybags)
-	l2 := fmt.Sprintf("**%s** %s days ago (%s) totalling between %s", dis.AssetDescription, dis.DaysAgo(), dis.TransactionDate, dis.Amount)
+	l2 := fmt.Sprintf("`%s` %s days ago (%s) totalling between %s", dis.AssetDescription, dis.DaysAgo(), dis.TransactionOn().Format("2006-01-02"), dis.Amount)
 	s := fmt.Sprintf("%s\n%s", l1, l2)
 
 	s = strings.ReplaceAll(s, ".", `\.`)
 	s = strings.ReplaceAll(s, "(", `\(`)
 	s = strings.ReplaceAll(s, ")", `\)`)
 	s = strings.ReplaceAll(s, "-", `\-`)
+
+	s = bluemonday.StrictPolicy().Sanitize(s)
 
 	return s
 }
