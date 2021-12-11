@@ -10,7 +10,8 @@ import (
 	"time"
 )
 
-var DisclosuresURL = "https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json"
+var DisclosuresURLHouse = "https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json"
+var DisclosuresURLSenate = "https://senate-stock-watcher-data.s3-us-west-2.amazonaws.com/aggregate/all_transactions.json"
 
 // {
 // 	"disclosure_year": 2021,
@@ -137,20 +138,35 @@ func GetDisclosuresFromFile(fn string) func() ([]Disclosure, error) {
 	}
 }
 
-func GetDisclosuresFromS3() (dd []Disclosure, err error) {
-	res, err := http.Get(DisclosuresURL)
+func DownloadDisclosuresFromS3(url string) ([]byte, error) {
+	res, err := http.Get(url)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	if res.StatusCode != 200 {
 		err = errors.New("unexpected status code " + res.Status)
-		return
+		return nil, err
 	}
 
 	defer res.Body.Close()
+	return ioutil.ReadAll(res.Body)
+}
 
-	data, err := ioutil.ReadAll(res.Body)
+func GetDisclosuresFromS3() (dd []Disclosure, err error) {
+	data, err := DownloadDisclosuresFromS3(DisclosuresURLHouse)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(data, &dd)
+	if err != nil {
+		return
+	}
+
+	data, err = DownloadDisclosuresFromS3(DisclosuresURLSenate)
+	if err != nil {
+		return
+	}
 	err = json.Unmarshal(data, &dd)
 	return
 }
