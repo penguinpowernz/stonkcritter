@@ -1,6 +1,8 @@
-# politstonk
+# stonkcritter
 
 A telegram bot that notifies you when a US congress critter makes a trade on the stock market.
+
+* The official channel is here: https://t.me/insidestonks
 
 Note this does not index or tell you who has what stocks.  For that, visit the terrific sites from which this bot gets it's updates:
 
