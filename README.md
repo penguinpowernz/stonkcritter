@@ -2,9 +2,7 @@
 
 A telegram bot that notifies you when a US congress critter makes a trade on the stock market: https://t.me/stonkcritter (only running on https://t.me/insidestonks for testing right now)
 
-[![image](https://user-images.githubusercontent.com/4642414/145662011-826cf4a2-457e-4d4b-b806-7897b00991a5.png)](https://t.me/stonkcritter)
-
-Note this does not index or tell you who has what stocks.  For that, visit the terrific sites from which this bot gets it's updates:
+Please note this does not index or tell you who has what stocks, only what stock trades have happened when they are disclosed.  For that, visit the terrific sites from which this bot gets it's updates:
 
 * https://housestockwatcher.com
 * https://senatestockwatcher.com
@@ -22,7 +20,36 @@ This is running on a Linode server using the Level1Techs coupon: https://linode.
 [![image](https://user-images.githubusercontent.com/4642414/145663935-ca14c03f-c80f-4eaf-9dd4-141049720076.png)](https://linode.com/level1techs
 )
 
-## Messages
+## Features
+
+- [x] broadcast messages to a Telegram Channel whenever a congress critter makes a trade
+- [x] subscribe to specific stock tickers to see which congress critters are trading that stock
+- [x] subscribe to a specific congress critter to see what trades they make
+- [x] save the cursor to stop sending the same messages if the service restarts
+- [x] get the direct message chat working
+- [ ] follow multiple tickers with a single `/follow` message
+- [ ] allow following specific asset types (e.g. stock options, crypto or futures)
+
+## How to use
+
+### Broadcast Channel
+
+You can use the bot passively, just by joining the following channel, which will message about every single stock trade a congress critter does.
+
+[![image](https://user-images.githubusercontent.com/4642414/145662011-826cf4a2-457e-4d4b-b806-7897b00991a5.png)](https://t.me/stonkcritter)
+
+### Personalized subscriptions
+
+You can use the bot actively, by messaging the bot directly.  Simply write `/help` to the bot and it will tell you what you can do, but the main
+things to do are to follow congress critters or stock tickers (by prefixing a `$` to the symbol).  Try the following:
+
+    /follow $MSFT
+    /follow $TSLA
+    /follow Nancy Pelosi
+
+You can write `/list` at any time to see who you're following, with links to unfollow.
+
+### Messages
 
 ![image](https://user-images.githubusercontent.com/4642414/145661696-f2f222b4-5ece-4107-a6c3-6251056366c6.png)
 
@@ -61,12 +88,10 @@ These are the trade values that come out of the disclosure data:
 |$1,001 -|💰|
 |Unknown|🙈|
 
-## TODO
+## How to host
 
-- [ ] save the cursor to stop sending the same messages if the service restarts
-- [ ] get the direct message chat working
-
-## Usage
+Probably stick to the officially hosted bot, unless this repo becomes stale/unresponsive, in case we cause too much traffic for the websites
+host the source data.
 
 ### Spam stop
 
@@ -79,6 +104,10 @@ You'll need to set the cursor manually to start with, this will stop it dumping 
 Or in the installed environment:
 
     sudo -iu stonkcritter stonkcritter -x 2021-10-30 -d /home/stonkcritter/data
+
+You could also do this when the bot is started by hitting the API endpoint:
+
+    curl -X PUT http://localhost:8090/cursor/2021-10-21
 
 ### Config
 
@@ -109,7 +138,7 @@ You can also run it from command line:
 
     BOT_TOKEN=xxx BOT_CHANNEL=xxx stonkcritter -chat
 
-Omitting BOT_CHANNEL will cause the bot not to broadcast disclosures to channel.
+Omitting BOT_CHANNEL or setting it to empty, will cause the bot not to broadcast disclosures to channel.
 
 ### API
 
@@ -123,14 +152,3 @@ You can run the following commands to call these on the running API on the same 
 
     $ stockcritter -pull
     $ stockcritter -loadfile <filename.json> [-x <2021-10-30>]
-
-### Chat interface
-
-WORK IN PROGRESS
-
-There are a few commands:
-
-* `/follow` to follow a ticker to congress critter
-* `/list` to show you what you are following
-* `/unfollow` to stop following something
-* `/findrep` to search for a specific representative
