@@ -11,7 +11,7 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gin-gonic/gin"
-	"github.com/penguinpowernz/politstonk"
+	"github.com/penguinpowernz/stonkcritter"
 	"github.com/timshannon/badgerhold/v4"
 )
 
@@ -60,7 +60,7 @@ func main() {
 			log.Fatalf("failed to parse the cursor: %s: %s", setCursor, err)
 		}
 		log.Printf("parsed cursor time as %s", t)
-		d := politstonk.NewDate(t)
+		d := stonkcritter.NewDate(t)
 		if err := brain.Upsert("cursor", &d); err != nil {
 			log.Fatalf("failed to save the cursor: %s: %s", setCursor, err)
 		}
@@ -68,7 +68,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	bot, err := politstonk.NewBot(
+	bot, err := stonkcritter.NewBot(
 		brain,
 		os.Getenv("BOT_TOKEN"),
 		os.Getenv("BOT_CHANNEL"),
@@ -83,15 +83,16 @@ func main() {
 
 	api.PUT("/disclosures", bot.HandleDisclosures)
 	api.GET("/reps", bot.HandleListReps)
+	api.GET("/subs", bot.HandleListSubs)
 	api.PUT("/cursor/:cursor", bot.HandleSetCursor)
 	api.POST("/pull_from_s3", bot.HandlePullFromS3)
 	go api.Run("localhost:8090")
 
 	// use the
-	var discloser func() ([]politstonk.Disclosure, error)
-	discloser = politstonk.GetDisclosuresFromS3
+	var discloser func() ([]stonkcritter.Disclosure, error)
+	discloser = stonkcritter.GetDisclosuresFromS3
 	if fileSource != "" {
-		discloser = politstonk.GetDisclosuresFromFile(fileSource)
+		discloser = stonkcritter.GetDisclosuresFromFile(fileSource)
 	}
 
 	t := time.NewTicker(time.Hour * 24)
@@ -107,7 +108,7 @@ func main() {
 }
 
 func downloadAndDump() {
-	dd, err := politstonk.GetDisclosuresFromS3()
+	dd, err := stonkcritter.GetDisclosuresFromS3()
 	if err != nil {
 		panic(err)
 	}

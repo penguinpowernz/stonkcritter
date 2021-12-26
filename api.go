@@ -1,4 +1,4 @@
-package politstonk
+package stonkcritter
 
 import (
 	"encoding/json"

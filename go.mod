@@ -1,4 +1,4 @@
-module github.com/penguinpowernz/politstonk
+module github.com/penguinpowernz/stonkcritter
 
 go 1.16
 
