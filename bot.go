@@ -54,6 +54,14 @@ func (bot *Bot) ConsumeDisclosures(dd []Disclosure) {
 	dd = Disclosures(dd).After(bot.GetCursor())
 	log.Printf("%d disclosures found after the cursor", len(dd))
 
+	var subs []Sub
+	if err := bot.store.Find(&subs, &badgerhold.Query{}); err != nil {
+		log.Println("ERROR: couldn't load subs:", err)
+		return
+	}
+
+	log.Println(len(subs), "subs loaded, ready to dispatch")
+
 	for _, d := range dd {
 		if bot.LogOnly {
 			log.Println(d.String())
@@ -61,22 +69,36 @@ func (bot *Bot) ConsumeDisclosures(dd []Disclosure) {
 		}
 
 		bot.Broadcast(d.String())
-		bot.DispatchDisclosure(d)
+		bot.DispatchDisclosure(d, subs)
 		time.Sleep(time.Second)
 	}
 
 	bot.UpdateCursor()
 }
 
-func (bot *Bot) DispatchDisclosure(d Disclosure) {
-	bot.store.ForEach(&badgerhold.Query{}, func(s *Sub) {
-		if s.ShouldNotify(d) {
-			bot.dmLimit.Wait(context.Background())
-			if _, err := bot.Send(tb.ChatID(s.ChatID), d.String()); err != nil {
-				log.Println("ERROR: disaptching disclosure:", err)
-			}
+func (bot *Bot) DispatchDisclosure(d Disclosure, subs []Sub) {
+	// create a deduplicator so we don't send the same message to the same user twice
+	// e.g. if they are subscribed to Pelosi and $MSFT and Pelosi makes an $MSFT trade
+	shouldSend, markSent := deduper()
+
+	for _, s := range subs {
+		if !s.ShouldNotify(d) { // check if this subscription is for this disclosure
+			continue
 		}
-	})
+
+		msg := d.String()
+		if !shouldSend(s.ChatID, msg) { // check if we already sent this to the user
+			continue
+		}
+
+		bot.dmLimit.Wait(context.Background())
+
+		if _, err := bot.Send(tb.ChatID(s.ChatID), msg, tb.ModeMarkdownV2, tb.NoPreview); err != nil {
+			log.Println("ERROR: disaptching disclosure:", err)
+		}
+
+		markSent(s.ChatID, msg)
+	}
 }
 
 func (bot *Bot) Broadcast(msg string) {
