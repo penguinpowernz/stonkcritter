@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/timshannon/badgerhold/v4"
 )
 
 func (bot *Bot) HandleListReps(c *gin.Context) {
@@ -57,4 +58,20 @@ func (bot *Bot) HandlePullFromS3(c *gin.Context) {
 
 	go bot.ConsumeDisclosures(dd)
 	c.Status(204)
+}
+
+func (bot *Bot) HandleSetCursor(c *gin.Context) {
+	cursor := c.Param("cursor")
+	t, err := time.Parse("2006-01-02", cursor)
+	if err != nil {
+		log.Fatalf("failed to parse the cursor: %s: %s", cursor, err)
+	}
+	log.Printf("parsed cursor time as %s", t)
+	d := NewDate(t)
+	if err := bot.store.Upsert("cursor", &d); err != nil {
+		log.Fatalf("failed to save the cursor: %s: %s", cursor, err)
+	}
+	log.Printf("updated cursor to %s (%s)", d.S, d.Time())
+
+	c.JSON(200, d.S)
 }
