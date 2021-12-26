@@ -1,6 +1,7 @@
 package politstonk
 
 import (
+	"encoding/base64"
 	"log"
 	"strings"
 
@@ -11,10 +12,32 @@ import (
 func (bot *Bot) setupCommands() {
 	bot.Bot.Handle("/critter", bot.findrep)
 	bot.Bot.Handle("/list", bot.list)
-	bot.Bot.Handle("/ignore", bot.unfollow)
-	bot.Bot.Handle("/watch", bot.follow)
+	bot.Bot.Handle("/unfollow", bot.unfollow)
+	bot.Bot.Handle("/follow", bot.follow)
 	bot.Bot.Handle("/help", bot.help)
 	bot.Bot.Handle("/start", bot.start)
+	bot.Bot.Handle(tb.OnText, bot.kitchenSink)
+}
+
+func (bot *Bot) kitchenSink(msg *tb.Message) {
+	switch {
+	case strings.Contains(msg.Text, "/unfollow_"):
+		bits := strings.Split(msg.Text, "_")
+		if len(bits) != 2 {
+			bot.Send(msg.Chat, "⚠️ Can't unfollow nothing...")
+			return
+		}
+
+		data, err := base64.RawStdEncoding.DecodeString(bits[1])
+		if err != nil {
+			bot.Send(msg.Chat, "⚠️ Sorry, couldn't decode the thing that you want to unfollow...")
+			return
+		}
+
+		thing := string(data)
+		msg.Payload = thing
+		bot.unfollow(msg)
+	}
 }
 
 func (bot *Bot) start(msg *tb.Message) {
@@ -85,8 +108,8 @@ func (bot *Bot) follow(msg *tb.Message) {
 }
 
 func (bot *Bot) unfollow(msg *tb.Message) {
-	bot.Send(msg.Chat, "Looking for that topic in your list of subscriptions...")
-	s := Sub{ChatID: int32(msg.Chat.ID), Topic: msg.Payload}
+	bot.Send(msg.Chat, "Looking for "+msg.Payload+" in your list of subscriptions...")
+	s := Sub{ChatID: msg.Chat.ID, Topic: msg.Payload}
 	err := bot.store.Delete(s.String(), s)
 	if err != nil {
 		bot.Send(msg.Chat, "😔 sorry, failed to delete that: "+err.Error())
@@ -105,12 +128,18 @@ func (bot *Bot) list(msg *tb.Message) {
 		return
 	}
 
-	topics := []string{}
-	for _, s := range subs {
-		topics = append(topics, s.Topic)
+	if len(subs) == 0 {
+		bot.Send(msg.Chat, "Not following anything, try /follow")
+		return
 	}
 
-	bot.Send(msg.Chat, "OK, you're following these things:"+strings.Join(topics, "\n"))
+	topics := []string{}
+	for _, s := range subs {
+		topics = append(topics, "- "+s.Topic+" /unfollow_"+base64.RawStdEncoding.EncodeToString([]byte(s.Topic)))
+	}
+
+	m := "OK, you're following these things, click the unfollow link to remove them from the list:\n" + strings.Join(topics, "\n")
+	bot.Send(msg.Chat, m)
 }
 
 func (bot *Bot) findrep(msg *tb.Message) {
@@ -153,8 +182,8 @@ func (bot *Bot) help(msg *tb.Message) {
 	txt = append(txt, "This bot will help you keep track of the stocks that the US congress critters trade.  Bear in mind that they have 45 days to disclose their trades, and most have started leaving this to the last day possible due to public srutiny of their trades.")
 	txt = append(txt, "")
 	txt = append(txt, "/help - `this help text`")
-	txt = append(txt, "/watch <thing> - `the main function, allows you to follow a $TICKER or a congress critter by name.  The name maybe converted to the full name as it appears in the disclosure source`")
-	txt = append(txt, "/ignore <thing> - `unfollow something from your list`")
+	txt = append(txt, "/follow <thing> - `the main function, allows you to follow a $TICKER or a congress critter by name.  The name maybe converted to the full name as it appears in the disclosure source`")
+	txt = append(txt, "/unfollow <thing> - `unfollow something from your list`")
 	txt = append(txt, "/list - `this will list everything that you are following`")
 	txt = append(txt, "/critter <name> - `if you're having trouble finding a congress critter by name, you can use this to search for the name you should use in the follow command`")
 
