@@ -46,7 +46,7 @@ var DisclosuresURLSenate = "https://senate-stock-watcher-data.s3-us-west-2.amazo
 
 // {
 // 	"disclosure_year": 2021,
-// 	"disclosure_date": "10/04/2021",    DD/MM/YYYY
+// 	"disclosure_date": "10/22/2021",    MM/DD/YYYY
 // 	"transaction_date": "2021-09-27",   YYYY-MM-DD
 // 	"owner": "joint",
 // 	"ticker": "BP",
@@ -123,7 +123,7 @@ func (dis Disclosure) AssetTypeTopic() string {
 
 func (dis Disclosure) OwnerString() string {
 	switch strings.ToLower(dis.Owner) {
-	case "self":
+	case "self", "":
 		return ""
 	case "joint":
 		return ", joint owned"
