@@ -185,17 +185,12 @@ func (dis Disclosure) ID() string {
 
 // TransactionOn gives the time that the trade was done
 func (dis Disclosure) TransactionOn() time.Time {
-	td, _ := time.Parse("01/02/2006", dis.TransactionDate)
-	return td
+	return normalizeDate(dis.TransactionDate)
 }
 
 // DisclosedOn gives the time that the trade was disclosed
 func (dis Disclosure) DisclosedOn() time.Time {
-	t, err := time.Parse("01/02/2006", dis.DisclosureDate)
-	if err != nil {
-		return time.Time{}
-	}
-
+	t := normalizeDate(dis.DisclosureDate)
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local)
 }
 
