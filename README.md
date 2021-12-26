@@ -1,6 +1,6 @@
 # stonkcritter
 
-A telegram bot that notifies you when a US congress critter makes a trade on the stock market: https://t.me/stonkcritter (only running on https://t.me/insidestonks for testing right now)
+A telegram bot that notifies you when a US congress critter makes a trade on the stock market at https://t.me/stonkcritter or with personal subscriptions via [@stonkcritter_bot](https://t.me/stonkcritter_bot)
 
 Please note this does not index or tell you who has what stocks, only what stock trades have happened when they are disclosed.  For that, visit the terrific sites from which this bot gets it's updates:
 
@@ -40,7 +40,7 @@ You can use the bot passively, just by joining the following channel, which will
 
 ### Personalized subscriptions
 
-You can use the bot actively, by messaging the bot directly.  Simply write `/help` to the bot and it will tell you what you can do, but the main
+You can use the bot actively, by messaging the bot directly, it's name is [@stonkcritter_bot](https://t.me/stonkcritter_bot).  Simply write `/help` to the bot and it will tell you what you can do, but the main
 things to do are to follow congress critters or stock tickers (by prefixing a `$` to the symbol).  Try the following:
 
     /follow $MSFT
