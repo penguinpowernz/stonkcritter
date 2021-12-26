@@ -83,6 +83,7 @@ func main() {
 
 	api.PUT("/disclosures", bot.HandleDisclosures)
 	api.GET("/reps", bot.HandleListReps)
+	api.PUT("/cursor/:cursor", bot.HandleSetCursor)
 	api.POST("/pull_from_s3", bot.HandlePullFromS3)
 	go api.Run("localhost:8090")
 
