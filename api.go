@@ -43,11 +43,7 @@ func (bot *Bot) HandleDisclosures(c *gin.Context) {
 
 	dd = Disclosures(dd).After(date)
 
-	bot.StoreCritters(dd)
-	for _, d := range dd {
-		bot.Broadcast(d.String())
-		bot.DispatchDisclosure(d)
-	}
+	go bot.ConsumeDisclosures(dd)
 
 	c.Status(204)
 }
@@ -59,6 +55,6 @@ func (bot *Bot) HandlePullFromS3(c *gin.Context) {
 		panic(err)
 	}
 
-	bot.ConsumeDisclosures(dd)
+	go bot.ConsumeDisclosures(dd)
 	c.Status(204)
 }
