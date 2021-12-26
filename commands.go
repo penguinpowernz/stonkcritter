@@ -97,7 +97,7 @@ func (bot *Bot) follow(msg *tb.Message) {
 		topic = names[0]
 	}
 
-	s := Sub{ChatID: int32(msg.Chat.ID), Topic: topic}
+	s := Sub{ChatID: msg.Chat.ID, Topic: topic}
 	err := bot.store.Insert(s.String(), s)
 	if err != nil {
 		bot.Send(msg.Chat, "😔 sorry, failed to save that: "+err.Error())

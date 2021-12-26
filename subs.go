@@ -6,7 +6,7 @@ import (
 )
 
 type Sub struct {
-	ChatID int32
+	ChatID int64
 	Topic  string
 }
 
