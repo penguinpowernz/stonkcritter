@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/penguinpowernz/stonkcritter/models"
@@ -12,6 +13,8 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
+// TelegramChannel will create a sink that sends the formatted disclosure message
+// to the given telegram channel using the given token
 func TelegramChannel(botToken, botChannel string) (Sink, error) {
 	bcChan, err := strconv.ParseInt(botChannel, 10, 64)
 	if err != nil {
@@ -23,8 +26,11 @@ func TelegramChannel(botToken, botChannel string) (Sink, error) {
 		return nil, err
 	}
 	channelLimit := *rate.NewLimiter(rate.Every(time.Minute/19), 1)
+	lock := new(sync.Mutex)
 
 	return func(d models.Disclosure) error {
+		lock.Lock()
+		defer lock.Unlock()
 		channelLimit.Wait(context.Background())
 		_, err := b.Send(tb.ChatID(bcChan), d.String(), tb.ModeMarkdownV2, tb.NoPreview)
 		return err
@@ -36,14 +42,20 @@ type SubSender interface {
 	Subs() []models.Sub
 }
 
+// TelegramBot will create a sink that uses the subscriptions contained in the provided bot to
+// send direct messages to subscribed users containing the formatted disclosure message
 func TelegramBot(bot SubSender) Sink {
 	dmLimit := *rate.NewLimiter(rate.Every(time.Minute/59), 1)
+	lock := new(sync.Mutex)
 
 	// create a deduplicator so we don't send the same message to the same user twice
 	// e.g. if they are subscribed to Pelosi and $MSFT and Pelosi makes an $MSFT trade
 	shouldSend, markSent := deduper()
 
 	return func(d models.Disclosure) error {
+		lock.Lock()
+		defer lock.Unlock()
+
 		for _, s := range bot.Subs() {
 			if !s.ShouldNotify(d) { // check if this subscription is for this disclosure
 				continue
