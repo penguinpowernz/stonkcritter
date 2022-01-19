@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -80,6 +81,11 @@ type Disclosure struct {
 	District           string `json:"district,omitempty"`
 	PtrLink            string `json:"ptr_link,omitempty"`
 	CapGainsOver200Usd bool   `json:"cap_gains_over_200_usd,omitempty"`
+}
+
+func (dis Disclosure) Bytes() []byte {
+	data, _ := json.Marshal(dis)
+	return data
 }
 
 func (dis Disclosure) CritterTopic() string {
