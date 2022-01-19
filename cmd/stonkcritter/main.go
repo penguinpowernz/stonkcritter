@@ -1,114 +1,135 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
+	"strconv"
 	"time"
 
-	"github.com/dgraph-io/badger/v3"
 	"github.com/gin-gonic/gin"
-	"github.com/penguinpowernz/stonkcritter"
-	"github.com/timshannon/badgerhold/v4"
+	"github.com/penguinpowernz/stonkcritter/api"
+	"github.com/penguinpowernz/stonkcritter/bot"
+	SINKS "github.com/penguinpowernz/stonkcritter/sinks"
+	"github.com/penguinpowernz/stonkcritter/source"
+	"github.com/penguinpowernz/stonkcritter/watcher"
+)
+
+var (
+	dataDir    = "./data"
+	fileSource = ""
+	cursorFile = "./stonkcritter.cursor"
+
+	runAPI, runChat, quiet, downloadDump bool
 )
 
 func main() {
-	var runChat, downloadDump, pull bool
-	var setCursor, fileSource, dataDir, loadFile string
-	flag.StringVar(&dataDir, "d", "./data", "the directory to save bot brain data in")
-	flag.StringVar(&fileSource, "f", "", "read from the given source file instead of S3")
-	flag.StringVar(&setCursor, "x", "", "set the current cursor, YYYY-MM-DD")
+	flag.StringVar(&dataDir, "d", dataDir, "the directory to save bot brain data in")
+	flag.StringVar(&fileSource, "f", fileSource, "read from the given source file instead of S3")
 	flag.BoolVar(&runChat, "chat", false, "enable Telegram communication")
+	flag.BoolVar(&runAPI, "api", false, "enable informational API")
+	flag.BoolVar(&quiet, "q", false, "don't log disclosure messages to terminal")
 	flag.BoolVar(&downloadDump, "download", false, "download the disclosures and dump them to STDOUT")
-	flag.BoolVar(&pull, "pull", false, "trigger the HTTP API to pull the disclosures from S3")
-	flag.StringVar(&loadFile, "loadfile", "", "load the disclosures in the given file via the running bots HTTP API (combine with -x to dump from cursor)")
 	flag.Parse()
 
-	log.SetOutput(os.Stderr)
+	shouldBroadcast := os.Getenv("BOT_TOKEN") != "" && os.Getenv("BOT_CHANNEL") != ""
+	shouldChat := os.Getenv("BOT_TOKEN") != "" && runChat
 
 	if downloadDump {
 		downloadAndDump()
 		os.Exit(0)
 	}
 
-	if loadFile != "" {
-		loadFileAndCursor(loadFile, setCursor)
-		os.Exit(0)
-	}
-
-	if pull {
-		pullS3()
-		os.Exit(0)
-	}
-
-	opts := badgerhold.DefaultOptions
-	opts.Options = badger.DefaultOptions(dataDir)
-
-	brain, err := badgerhold.Open(opts)
-	if err != nil {
-		panic(err)
-	}
-
-	// update the cursor so we don't have to care about storing
-	// or broadcasting every single discloure ever
-	if setCursor != "" {
-		t, err := time.Parse("2006-01-02", setCursor)
-		if err != nil {
-			log.Fatalf("failed to parse the cursor: %s: %s", setCursor, err)
-		}
-		log.Printf("parsed cursor time as %s", t)
-		d := stonkcritter.NewDate(t)
-		if err := brain.Upsert("cursor", &d); err != nil {
-			log.Fatalf("failed to save the cursor: %s: %s", setCursor, err)
-		}
-		log.Printf("updated cursor to %s (%s)", d.S, d.Time())
-		os.Exit(0)
-	}
-
-	bot, err := stonkcritter.NewBot(
-		brain,
-		os.Getenv("BOT_TOKEN"),
-		os.Getenv("BOT_CHANNEL"),
-	)
-
-	if err != nil {
-		panic(err)
-	}
-
-	bot.LogOnly = !runChat
-	api := gin.Default()
-
-	api.PUT("/disclosures", bot.HandleDisclosures)
-	api.GET("/reps", bot.HandleListReps)
-	api.GET("/subs", bot.HandleListSubs)
-	api.PUT("/cursor/:cursor", bot.HandleSetCursor)
-	api.POST("/pull_from_s3", bot.HandlePullFromS3)
-	go api.Run("localhost:8090")
-
-	// use the
-	var discloser func() ([]stonkcritter.Disclosure, error)
-	discloser = stonkcritter.GetDisclosuresFromS3
+	var opts []watcher.Option
 	if fileSource != "" {
-		discloser = stonkcritter.GetDisclosuresFromFile(fileSource)
+		opts = append(opts, watcher.FromFile(fileSource))
+		log.Println("using file disclosure source", fileSource)
+	} else {
+		opts = append(opts, watcher.FromS3())
+		log.Println("using S3 disclosure source")
 	}
 
-	t := time.NewTicker(time.Hour * 24)
-	for {
-		<-t.C
-		dd, err := discloser()
+	if cursorFile != "" {
+		setCursorToTodayIfNotExist(cursorFile)
+		opts = append(opts, watcher.DiskCursor(cursorFile, true))
+		log.Println("using cursor file", cursorFile)
+	}
+
+	w, err := watcher.NewWatcher(opts...)
+	if err != nil {
+		panic(err)
+	}
+
+	var sinks []SINKS.Sink
+
+	if shouldBroadcast {
+		broadcast, err := SINKS.TelegramChannel(os.Getenv("BOT_TOKEN"), os.Getenv("BOT_CHANNEL"))
+		if err != nil {
+			fmt.Println("WARN: failed to parse BOT_CHANNEL:", err)
+		} else {
+			sinks = append(sinks, broadcast)
+			log.Println("added sink: telegram broadcast to channel", os.Getenv("BOT_CHANNEL"))
+		}
+	}
+
+	if !quiet {
+		sinks = append(sinks, SINKS.Writer(os.Stdout))
+		log.Println("added sink: stdout")
+	}
+
+	if shouldChat {
+		brain, err := bot.NewBrain(dataDir)
 		if err != nil {
 			panic(err)
 		}
 
-		bot.ConsumeDisclosures(dd)
+		bot, err := bot.NewBot(brain, os.Getenv("BOT_TOKEN"))
+		if err != nil {
+			panic(err)
+		}
+
+		sinks = append(sinks, SINKS.TelegramBot(bot))
+		log.Println("added sink: telegram bot")
+
+		if runAPI {
+			log.Println("starting informational API")
+			go startAPI(w, brain, bot)
+		}
+	}
+
+	log.Println("started the disclosure watcher")
+	w.Start(context.Background())
+	for w.Next() {
+		for _, sink := range sinks {
+			sink(w.Disclosure())
+		}
+	}
+}
+
+func startAPI(w *watcher.Watcher, b *bot.Brain, bt *bot.Bot) {
+	server := api.NewServer(struct {
+		*watcher.Watcher
+		*bot.Brain
+		*bot.Bot
+	}{w, b, bt})
+	r := gin.Default()
+	server.SetupRoutes(r)
+	r.Run(":8090")
+}
+
+func setCursorToTodayIfNotExist(fn string) {
+	_, err := os.Stat(fn)
+	if os.IsNotExist(err) {
+		ioutil.WriteFile(fn, []byte(strconv.Itoa(int(time.Now().Unix()))), 0644)
 	}
 }
 
 func downloadAndDump() {
-	dd, err := stonkcritter.GetDisclosuresFromS3()
+	dd, err := source.GetDisclosuresFromS3()
 	if err != nil {
 		panic(err)
 	}
@@ -117,45 +138,4 @@ func downloadAndDump() {
 		panic(err)
 	}
 	os.Stdout.Write(data)
-}
-
-func loadFileAndCursor(fn string, cursor string) {
-	r, err := os.Open(fn)
-	if err != nil {
-		panic(err)
-	}
-
-	url := "http://localhost:8090/disclosures"
-	if cursor != "" {
-		url += "?cursor=" + cursor
-	}
-
-	req, err := http.NewRequest(http.MethodPut, url, r)
-	if err != nil {
-		panic(err)
-	}
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		panic(err)
-	}
-
-	if res.StatusCode == http.StatusNoContent {
-		fmt.Println("OK")
-		return
-	}
-
-	fmt.Println("Bad status returned:", res.StatusCode)
-}
-
-func pullS3() {
-	res, err := http.Post("http://localhost:8090/pull_from_s3", "", nil)
-	if err != nil {
-		panic(err)
-	}
-
-	if res.StatusCode == http.StatusNoContent {
-		fmt.Println("OK")
-		return
-	}
 }
