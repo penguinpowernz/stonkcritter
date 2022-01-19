@@ -23,6 +23,7 @@ var (
 	dataDir    = "./data"
 	fileSource = ""
 	cursorFile = "./stonkcritter.cursor"
+	wsURL      = ""
 
 	runAPI, runChat, quiet, downloadDump bool
 )
@@ -30,14 +31,12 @@ var (
 func main() {
 	flag.StringVar(&dataDir, "d", dataDir, "the directory to save bot brain data in")
 	flag.StringVar(&fileSource, "f", fileSource, "read from the given source file instead of S3")
+	flag.StringVar(&wsURL, "w", wsURL, "the websockets URL and path (e.g. 127.0.0.1:8080/ws)")
 	flag.BoolVar(&runChat, "chat", false, "enable Telegram communication")
 	flag.BoolVar(&runAPI, "api", false, "enable informational API")
 	flag.BoolVar(&quiet, "q", false, "don't log disclosure messages to terminal")
 	flag.BoolVar(&downloadDump, "download", false, "download the disclosures and dump them to STDOUT")
 	flag.Parse()
-
-	shouldBroadcast := os.Getenv("BOT_TOKEN") != "" && os.Getenv("BOT_CHANNEL") != ""
-	shouldChat := os.Getenv("BOT_TOKEN") != "" && runChat
 
 	if downloadDump {
 		downloadAndDump()
@@ -66,46 +65,21 @@ func main() {
 
 	var sinks []SINKS.Sink
 
-	if shouldBroadcast {
-		broadcast, err := SINKS.TelegramChannel(os.Getenv("BOT_TOKEN"), os.Getenv("BOT_CHANNEL"))
-		if err != nil {
-			fmt.Println("WARN: failed to parse BOT_CHANNEL:", err)
-		} else {
-			sinks = append(sinks, broadcast)
-			log.Println("added sink: telegram broadcast to channel", os.Getenv("BOT_CHANNEL"))
-		}
-	}
-
 	if !quiet {
 		sinks = append(sinks, SINKS.Writer(os.Stdout))
 		log.Println("added sink: stdout")
 	}
 
-	if shouldChat {
-		brain, err := bot.NewBrain(dataDir)
-		if err != nil {
-			panic(err)
-		}
-
-		bot, err := bot.NewBot(brain, os.Getenv("BOT_TOKEN"))
-		if err != nil {
-			panic(err)
-		}
-
-		sinks = append(sinks, SINKS.TelegramBot(bot))
-		log.Println("added sink: telegram bot")
-
-		if runAPI {
-			log.Println("starting informational API")
-			go startAPI(w, brain, bot)
-		}
-	}
+	createWebsocketSink(&sinks)
+	createBroadcastSink(&sinks)
+	createBotSink(&sinks, w)
 
 	log.Println("started the disclosure watcher")
 	w.Start(context.Background())
 	for w.Next() {
 		for _, sink := range sinks {
-			sink(w.Disclosure())
+			d := w.Disclosure()
+			go sink(d)
 		}
 	}
 }
@@ -138,4 +112,56 @@ func downloadAndDump() {
 		panic(err)
 	}
 	os.Stdout.Write(data)
+}
+
+func createBotSink(sinks *[]SINKS.Sink, w *watcher.Watcher) {
+	if os.Getenv("BOT_TOKEN") == "" || !runChat {
+		return
+	}
+
+	brain, err := bot.NewBrain(dataDir)
+	if err != nil {
+		panic(err)
+	}
+
+	bot, err := bot.NewBot(brain, os.Getenv("BOT_TOKEN"))
+	if err != nil {
+		panic(err)
+	}
+
+	*sinks = append(*sinks, SINKS.TelegramBot(bot))
+	log.Println("added sink: telegram bot")
+
+	if runAPI {
+		log.Println("starting informational API")
+		go startAPI(w, brain, bot)
+	}
+}
+
+func createWebsocketSink(sinks *[]SINKS.Sink) {
+	if wsURL == "" {
+		return
+	}
+
+	sink, err := SINKS.Websockets("0.0.0.0:8080/ws")
+	if err != nil {
+		return
+	}
+
+	*sinks = append(*sinks, sink)
+}
+
+func createBroadcastSink(sinks *[]SINKS.Sink) {
+	if os.Getenv("BOT_TOKEN") == "" || os.Getenv("BOT_CHANNEL") == "" {
+		return
+	}
+
+	broadcast, err := SINKS.TelegramChannel(os.Getenv("BOT_TOKEN"), os.Getenv("BOT_CHANNEL"))
+	if err != nil {
+		fmt.Println("WARN: failed to parse BOT_CHANNEL:", err)
+		return
+	}
+
+	*sinks = append(*sinks, broadcast)
+	log.Println("added sink: telegram broadcast to channel", os.Getenv("BOT_CHANNEL"))
 }
