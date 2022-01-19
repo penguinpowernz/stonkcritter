@@ -4,7 +4,9 @@ go 1.16
 
 require (
 	github.com/dgraph-io/badger/v3 v3.2103.1
+	github.com/eclipse/paho.mqtt.golang v1.3.5
 	github.com/gin-gonic/gin v1.7.4
+	github.com/gorilla/websocket v1.4.2
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/nats-io/nats-server/v2 v2.7.0 // indirect
