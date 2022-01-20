@@ -1,20 +1,13 @@
-package politstonk
+package models
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
 )
-
-var DisclosuresURLHouse = "https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json"
-var DisclosuresURLSenate = "https://senate-stock-watcher-data.s3-us-west-2.amazonaws.com/aggregate/all_transactions.json"
 
 //   COUNT  TYPES OF OWNER
 //       1  "FL HSG Fin Corp Homeowner MTS Rev 2.15% Due 07/01/2029";
@@ -88,6 +81,11 @@ type Disclosure struct {
 	District           string `json:"district,omitempty"`
 	PtrLink            string `json:"ptr_link,omitempty"`
 	CapGainsOver200Usd bool   `json:"cap_gains_over_200_usd,omitempty"`
+}
+
+func (dis Disclosure) Bytes() []byte {
+	data, _ := json.Marshal(dis)
+	return data
 }
 
 func (dis Disclosure) CritterTopic() string {
@@ -284,54 +282,6 @@ func (dis Disclosure) String() string {
 	return dis.NormalString()
 }
 
-func GetDisclosuresFromFile(fn string) func() ([]Disclosure, error) {
-	return func() ([]Disclosure, error) {
-		var v []Disclosure
-		data, err := ioutil.ReadFile(fn)
-		if err != nil {
-			return v, err
-		}
-
-		err = json.Unmarshal(data, &v)
-		return v, err
-	}
-}
-
-func DownloadDisclosuresFromS3(url string) ([]byte, error) {
-	res, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-
-	if res.StatusCode != 200 {
-		err = errors.New("unexpected status code " + res.Status)
-		return nil, err
-	}
-	log.Println("got data from", url)
-	defer res.Body.Close()
-	return ioutil.ReadAll(res.Body)
-}
-
-func GetDisclosuresFromS3() (dd []Disclosure, err error) {
-	data, err := DownloadDisclosuresFromS3(DisclosuresURLHouse)
-	if err != nil {
-		return
-	}
-	err = json.Unmarshal(data, &dd)
-	if err != nil {
-		return
-	}
-
-	data, err = DownloadDisclosuresFromS3(DisclosuresURLSenate)
-	if err != nil {
-		return
-	}
-	var _dd []Disclosure
-	err = json.Unmarshal(data, &_dd)
-	dd = append(dd, _dd...)
-	return
-}
-
 // FromDate will return disclosures from an exact date
 func FromDate(dd []Disclosure, date string) (do []Disclosure) {
 	for _, d := range dd {
@@ -346,12 +296,12 @@ func FromDate(dd []Disclosure, date string) (do []Disclosure) {
 type Disclosures []Disclosure
 
 // After will only return disclousres from the list after the given time
-func (dd Disclosures) After(date Date) Disclosures {
+func (dd Disclosures) After(date time.Time) Disclosures {
 	var out Disclosures
 
 	for _, d := range dd {
 		t := d.DisclosedOn()
-		if t.After(date.Time()) {
+		if t.After(date) {
 			out = append(out, d)
 		}
 	}

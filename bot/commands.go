@@ -1,10 +1,11 @@
-package politstonk
+package bot
 
 import (
 	"encoding/base64"
 	"log"
 	"strings"
 
+	"github.com/penguinpowernz/stonkcritter/models"
 	"github.com/timshannon/badgerhold/v4"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -76,7 +77,7 @@ func (bot *Bot) follow(msg *tb.Message) {
 
 	if !isTicker(topic) {
 		bot.Send(msg.Chat, "let me see if I can find that congress critter in my list...")
-		names, err := bot.searchCritters(topic)
+		names, err := bot.brain.SearchCritters(topic)
 
 		if err != nil {
 			bot.Send(msg.Chat, "😔 sorry, failed to search: "+err.Error())
@@ -97,31 +98,30 @@ func (bot *Bot) follow(msg *tb.Message) {
 		topic = names[0]
 	}
 
-	s := Sub{ChatID: msg.Chat.ID, Topic: topic}
-	err := bot.store.Insert(s.String(), s)
-	if err != nil {
+	if err := bot.brain.Subscribe(msg.Chat.ID, topic); err != nil {
 		bot.Send(msg.Chat, "😔 sorry, failed to save that: "+err.Error())
 		return
 	}
 
 	bot.Send(msg.Chat, "OK saved 👍")
+	bot.loadSubs()
 }
 
 func (bot *Bot) unfollow(msg *tb.Message) {
 	bot.Send(msg.Chat, "Looking for "+msg.Payload+" in your list of subscriptions...")
-	s := Sub{ChatID: msg.Chat.ID, Topic: msg.Payload}
-	err := bot.store.Delete(s.String(), s)
+	err := bot.brain.Unsubscribe(msg.Chat.ID, msg.Payload)
 	if err != nil {
 		bot.Send(msg.Chat, "😔 sorry, failed to delete that: "+err.Error())
 		return
 	}
 
 	bot.Send(msg.Chat, "OK unfollowed 👍")
+	bot.loadSubs()
 }
 
 func (bot *Bot) list(msg *tb.Message) {
-	subs := []Sub{}
-	err := bot.store.Find(&subs, badgerhold.Where("ChatID").Eq(msg.Chat.ID))
+	subs := []models.Sub{}
+	err := bot.brain.Find(&subs, badgerhold.Where("ChatID").Eq(msg.Chat.ID))
 
 	if err != nil {
 		bot.Send(msg.Chat, "😔 sorry, failed to search: "+err.Error())
@@ -150,7 +150,7 @@ func (bot *Bot) findrep(msg *tb.Message) {
 		return
 	}
 
-	names, err := bot.searchCritters(search)
+	names, err := bot.brain.SearchCritters(search)
 
 	if err != nil {
 		bot.Send(msg.Chat, "sorry, failed to search: "+err.Error())

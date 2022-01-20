@@ -1,4 +1,4 @@
-package politstonk
+package sinks
 
 import "testing"
 

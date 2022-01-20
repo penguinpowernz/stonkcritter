@@ -1,4 +1,4 @@
-package politstonk
+package models
 
 import (
 	"fmt"

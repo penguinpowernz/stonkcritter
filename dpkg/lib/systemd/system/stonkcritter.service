@@ -6,7 +6,7 @@ After=network-online.target
 User=stonkcritter
 WorkingDirectory=/home/stonkcritter
 EnvironmentFile=/etc/default/stonkcritter
-ExecStart=/usr/bin/stonkcritter -chat -d /home/stonkcritter/data
+ExecStart=/usr/bin/stonkcritter -chat -d /home/stonkcritter/data -c /home/stonkcritter/cursor -api
 Restart=always
 TimeoutStartSec=5
 

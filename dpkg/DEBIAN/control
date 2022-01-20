@@ -1,12 +1,13 @@
 Package: stonkcritter
-Version: 1.0.0
+Version: 2.0.0
 Section: misc
 Priority: optional
 Architecture: all
-Maintainer: 
+Maintainer: Stonkcritter <github.com/penguinpowernz>
 Essential: no
-Homepage: http://example.com
-Installed-Size: 
-Description: This is a description
-  This is a longer description
-  that takes up multiple lines
+Homepage: https://github.com/penguinpowernz/stonkcritter
+Installed-Size: 21489
+Description: A bot that monitors US politician stock trades and sends notifications
+  A bot that monitors the US politician stock trades and send notifications via
+  various methods like webhooks, websockets, MQTT, NATS and Telegram channel.  It
+  also allows personalized subscriptions via a Telegram bot.
