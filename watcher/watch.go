@@ -20,6 +20,7 @@ func NewWatcher(opts ...Option) (*Watcher, error) {
 	w.cursor = time.Now().Add(time.Hour * 24 * 30 * -1) // default to only send disclosures from previous 30 days
 	w.autosaveCursor = func(time.Time) error { return nil }
 	w.critters = map[string]interface{}{}
+	w.crittersLock = new(sync.RWMutex)
 
 	for _, o := range opts {
 		if err := o(w); err != nil {
@@ -44,6 +45,9 @@ type Watcher struct {
 	provider       Provider
 	autosaveCursor func(time.Time) error
 	manualCheck    chan bool
+	checks         int
+	dispatched     int
+	inflight       int
 
 	critters     map[string]interface{}
 	crittersLock *sync.RWMutex
@@ -59,6 +63,19 @@ func (w Watcher) Critters() []string {
 		cs = append(cs, k)
 	}
 	return cs
+}
+
+// Checks returns the number of disclosure source checks that have been done
+func (w Watcher) Checks() int {
+	return w.checks
+}
+
+func (w Watcher) Dispatched() int {
+	return w.dispatched
+}
+
+func (w Watcher) Inflight() int {
+	return w.inflight
 }
 
 func (w Watcher) CurrentCursor() time.Time {
@@ -98,7 +115,6 @@ func (w *Watcher) Start(ctx context.Context) {
 				getDisclosures()
 			}
 		}
-
 	}()
 }
 
@@ -106,6 +122,9 @@ func (w *Watcher) dispatch(trades []models.Disclosure) {
 	w.crittersLock.Lock()
 	defer w.crittersLock.Unlock()
 
+	log.Printf("checking %d trade disclosures, current cursor is %s", len(trades), w.cursor.Format("2006-01-02"))
+
+	var dispatched int
 	for _, t := range trades {
 		w.critters[t.CritterName()] = nil
 
@@ -115,11 +134,17 @@ func (w *Watcher) dispatch(trades []models.Disclosure) {
 
 		w.trades <- t
 		w.cursor = t.DisclosedOn()
+		dispatched++
+		w.inflight++
 
 		if err := w.autosaveCursor(w.cursor); err != nil {
 			log.Println("ERROR: autosaving cursor")
 		}
 	}
+
+	log.Printf("found %d new trade disclosures, cursor is now at %s", dispatched, w.cursor.Format("2006-01-02"))
+	w.checks++
+	w.dispatched += dispatched
 }
 
 // Next will block until there are available disclosures, and then return true, or
@@ -141,5 +166,6 @@ func (w *Watcher) Next() bool {
 }
 
 func (w *Watcher) Disclosure() models.Disclosure {
+	w.inflight--
 	return <-w.trades
 }
