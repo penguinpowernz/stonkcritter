@@ -17,6 +17,8 @@ This was done as part of the [Level1Techs Devember competition](https://forum.le
 
 This is running on a Linode server using the Level1Techs coupon: https://linode.com/level1techs
 
+The version of the software that was submitted for the competition is tagged v1.0.0.
+
 [![image](https://user-images.githubusercontent.com/4642414/145663935-ca14c03f-c80f-4eaf-9dd4-141049720076.png)](https://linode.com/level1techs
 )
 
