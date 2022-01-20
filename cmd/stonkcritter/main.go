@@ -4,14 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nats-io/nats.go"
 	"github.com/penguinpowernz/stonkcritter/api"
 	"github.com/penguinpowernz/stonkcritter/bot"
 	SINKS "github.com/penguinpowernz/stonkcritter/sinks"
@@ -23,7 +25,9 @@ var (
 	dataDir    = "./data"
 	fileSource = ""
 	cursorFile = "./stonkcritter.cursor"
-	wsURL      = ""
+	wsURL      = os.Getenv("WS_URL")
+	natsURL    = os.Getenv("NATS_URL")
+	mqttURL    = os.Getenv("MQTT_URL")
 
 	runAPI, runChat, quiet, downloadDump, runOnce bool
 )
@@ -32,6 +36,8 @@ func main() {
 	flag.StringVar(&dataDir, "d", dataDir, "the directory to save bot brain data in")
 	flag.StringVar(&fileSource, "f", fileSource, "read from the given source file instead of S3")
 	flag.StringVar(&wsURL, "w", wsURL, "the websockets URL and path (e.g. 127.0.0.1:8080/ws)")
+	flag.StringVar(&mqttURL, "m", mqttURL, "the websockets URL and path (e.g. 127.0.0.1:1833/stonk/critter/trades)")
+	flag.StringVar(&natsURL, "n", natsURL, "the NATS URL and subject (e.g. nats://127.0.0.1:4222/stonk.critter.trades)")
 	flag.BoolVar(&runChat, "chat", false, "enable Telegram communication")
 	flag.BoolVar(&runAPI, "api", false, "enable informational API")
 	flag.BoolVar(&quiet, "q", false, "don't log disclosure messages to terminal")
@@ -71,6 +77,8 @@ func main() {
 		log.Println("added sink: stdout")
 	}
 
+	createNATSSink(&sinks)
+	createMQTTSink(&sinks)
 	createWebsocketSink(&sinks)
 	createBroadcastSink(&sinks)
 	createBotSink(&sinks, w)
@@ -148,6 +156,47 @@ func createBotSink(sinks *[]SINKS.Sink, w *watcher.Watcher) {
 	}
 }
 
+func createMQTTSink(sinks *[]SINKS.Sink) {
+	if mqttURL == "" {
+		return
+	}
+
+	topic := "stonk/critter/trades"
+	bits := strings.Split(mqttURL, "/")
+	url := bits[0]
+	if len(bits) > 1 {
+		topic = bits[1]
+	}
+
+	sink, err := SINKS.MQTT(url, os.Getenv("MQTT_CREDS"), topic)
+	if err != nil {
+		log.Println("ERROR: failed to create MQTT sink:", err)
+		return
+	}
+
+	*sinks = append(*sinks, sink)
+}
+
+func createNATSSink(sinks *[]SINKS.Sink) {
+	if natsURL == "" {
+		return
+	}
+
+	subj := "stonk.critter.trades"
+	bits := strings.Split(natsURL, "/")
+	url := bits[0]
+	if len(bits) > 1 {
+		subj = bits[1]
+	}
+
+	nc, err := nats.Connect(url)
+	if err != nil {
+		return
+	}
+
+	*sinks = append(*sinks, SINKS.NATS(nc, subj))
+}
+
 func createWebsocketSink(sinks *[]SINKS.Sink) {
 	if wsURL == "" {
 		return
@@ -168,7 +217,7 @@ func createBroadcastSink(sinks *[]SINKS.Sink) {
 
 	broadcast, err := SINKS.TelegramChannel(os.Getenv("BOT_TOKEN"), os.Getenv("BOT_CHANNEL"))
 	if err != nil {
-		fmt.Println("WARN: failed to parse BOT_CHANNEL:", err)
+		log.Println("ERROR: failed to parse BOT_CHANNEL:", err)
 		return
 	}
 
