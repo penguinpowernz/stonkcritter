@@ -148,6 +148,14 @@ func createBotSink(sinks *[]SINKS.Sink, w *watcher.Watcher) {
 		panic(err)
 	}
 
+	// update the critters in the bots brain after every check
+	go func() {
+		for {
+			w.WaitForCheck()
+			brain.StoreCritters(w.Critters())
+		}
+	}()
+
 	*sinks = append(*sinks, SINKS.TelegramBot(bot))
 	log.Println("added sink: telegram bot")
 

@@ -21,6 +21,7 @@ func NewWatcher(opts ...Option) (*Watcher, error) {
 	w.autosaveCursor = func(time.Time) error { return nil }
 	w.critters = map[string]interface{}{}
 	w.crittersLock = new(sync.RWMutex)
+	w.onCheckDoneLock = new(sync.Mutex)
 
 	for _, o := range opts {
 		if err := o(w); err != nil {
@@ -38,16 +39,18 @@ func NewWatcher(opts ...Option) (*Watcher, error) {
 }
 
 type Watcher struct {
-	ticker         *time.Ticker
-	cursor         time.Time
-	running        bool
-	trades         chan models.Disclosure
-	provider       Provider
-	autosaveCursor func(time.Time) error
-	manualCheck    chan bool
-	checks         int
-	dispatched     int
-	inflight       int
+	ticker          *time.Ticker
+	cursor          time.Time
+	running         bool
+	trades          chan models.Disclosure
+	provider        Provider
+	autosaveCursor  func(time.Time) error
+	manualCheck     chan bool
+	checks          int
+	dispatched      int
+	inflight        int
+	onCheckDone     []chan struct{}
+	onCheckDoneLock *sync.Mutex
 
 	critters     map[string]interface{}
 	crittersLock *sync.RWMutex
@@ -82,6 +85,24 @@ func (w Watcher) CurrentCursor() time.Time {
 	return w.cursor
 }
 
+func (w *Watcher) WaitForCheck() {
+	w.onCheckDoneLock.Lock()
+	defer w.onCheckDoneLock.Unlock()
+	ch := make(chan struct{})
+	w.onCheckDone = append(w.onCheckDone, ch)
+	<-ch
+}
+
+// reset all the check waiters
+func (w *Watcher) checked() {
+	w.onCheckDoneLock.Lock()
+	defer w.onCheckDoneLock.Unlock()
+	for _, ch := range w.onCheckDone {
+		close(ch)
+	}
+	w.onCheckDone = []chan struct{}{}
+}
+
 // CheckNow will trigger the watcher to check the disclosers from
 // the provider immediately
 func (w Watcher) CheckNow() {
@@ -98,6 +119,7 @@ func (w *Watcher) Start(ctx context.Context) {
 		}
 
 		w.dispatch(dd)
+		w.checked()
 	}
 
 	go func() {
