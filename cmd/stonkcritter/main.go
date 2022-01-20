@@ -37,7 +37,7 @@ func main() {
 	flag.StringVar(&dataDir, "d", dataDir, "the directory to save bot brain data in")
 	flag.StringVar(&fileSource, "f", fileSource, "read from the given source file instead of S3")
 	flag.StringVar(&wsURL, "w", wsURL, "the websockets URL and path (e.g. 127.0.0.1:8080/ws)")
-	flag.StringVar(&mqttURL, "m", mqttURL, "the websockets URL and path (e.g. 127.0.0.1:1833/stonk/critter/trades)")
+	flag.StringVar(&mqttURL, "m", mqttURL, "the MQTT URL and path (e.g. 127.0.0.1:1833/stonk/critter/trades)")
 	flag.StringVar(&natsURL, "n", natsURL, "the NATS URL and subject (e.g. nats://127.0.0.1:4222/stonk.critter.trades)")
 	flag.BoolVar(&runChat, "chat", false, "enable Telegram communication")
 	flag.BoolVar(&runAPI, "api", false, "enable informational API")
