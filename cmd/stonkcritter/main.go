@@ -33,6 +33,7 @@ var (
 )
 
 func main() {
+	flag.StringVar(&cursorFile, "c", cursorFile, "the file the current cursor is saved to")
 	flag.StringVar(&dataDir, "d", dataDir, "the directory to save bot brain data in")
 	flag.StringVar(&fileSource, "f", fileSource, "read from the given source file instead of S3")
 	flag.StringVar(&wsURL, "w", wsURL, "the websockets URL and path (e.g. 127.0.0.1:8080/ws)")
