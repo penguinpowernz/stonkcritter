@@ -52,6 +52,8 @@ func MQTTWithOptions(opts *mqtt.ClientOptions, topic string) (Sink, error) {
 	return func(d models.Disclosure) error {
 		t := client.Publish(topic, 0, false, d.Bytes())
 		<-t.Done()
-		return t.Error()
+		err := t.Error()
+		logerr(err, "mqtt", "while publishing")
+		return err
 	}, nil
 }

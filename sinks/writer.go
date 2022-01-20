@@ -9,7 +9,7 @@ import (
 
 func Writer(w io.Writer) Sink {
 	return func(d models.Disclosure) error {
-		fmt.Fprintln(w, d.String())
+		fmt.Fprintln(w, d.CritterName(), d.Type, d.TickerString(), d.Amount, d.DaysAgo(), "days ago", d.AssetDescription, d.OwnerString())
 		return nil
 	}
 }

@@ -50,6 +50,10 @@ func Websockets(wsURL string) (Sink, error) {
 	}
 
 	return func(d models.Disclosure) error {
+		if len(conns) == 0 {
+			return nil
+		}
+
 		connlock.RLock()
 		defer connlock.RUnlock()
 
@@ -58,11 +62,14 @@ func Websockets(wsURL string) (Sink, error) {
 				continue
 			}
 
-			if err := c.WriteJSON(d); err == websocket.ErrCloseSent || err == io.EOF {
+			if err := c.WriteJSON(d); err != nil && (err == websocket.ErrCloseSent || err == io.EOF) {
 				conns[i] = nil
+			} else if err != nil {
+				logit("websocket", "ERROR: %s", err)
 			}
 		}
 
+		Counts.Websocket++
 		return nil
 	}, nil
 }

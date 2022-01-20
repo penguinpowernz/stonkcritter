@@ -3,7 +3,6 @@ package sinks
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 	"sync"
 	"time"
@@ -32,7 +31,12 @@ func TelegramChannel(botToken, botChannel string) (Sink, error) {
 		lock.Lock()
 		defer lock.Unlock()
 		channelLimit.Wait(context.Background())
+
 		_, err := b.Send(tb.ChatID(bcChan), d.String(), tb.ModeMarkdownV2, tb.NoPreview)
+		logerr(err, "tgchannel", "sending broading message")
+		if err == nil {
+			Counts.TelegramChannel++
+		}
 		return err
 	}, nil
 }
@@ -69,12 +73,13 @@ func TelegramBot(bot SubSender) Sink {
 			dmLimit.Wait(context.Background())
 
 			if _, err := bot.Send(tb.ChatID(s.ChatID), msg, tb.ModeMarkdownV2, tb.NoPreview); err != nil {
-				log.Println("ERROR: disaptching disclosure:", err)
+				logerr(err, "tgbot", "sending disclosure message")
 			}
 
 			markSent(s.ChatID, msg)
 		}
 
+		Counts.TelegramBot++
 		return nil
 	}
 }
