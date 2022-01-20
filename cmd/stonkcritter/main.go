@@ -25,7 +25,7 @@ var (
 	cursorFile = "./stonkcritter.cursor"
 	wsURL      = ""
 
-	runAPI, runChat, quiet, downloadDump bool
+	runAPI, runChat, quiet, downloadDump, runOnce bool
 )
 
 func main() {
@@ -35,6 +35,7 @@ func main() {
 	flag.BoolVar(&runChat, "chat", false, "enable Telegram communication")
 	flag.BoolVar(&runAPI, "api", false, "enable informational API")
 	flag.BoolVar(&quiet, "q", false, "don't log disclosure messages to terminal")
+	flag.BoolVar(&runOnce, "1", false, "only run a single check")
 	flag.BoolVar(&downloadDump, "download", false, "download the disclosures and dump them to STDOUT")
 	flag.Parse()
 
@@ -74,12 +75,21 @@ func main() {
 	createBroadcastSink(&sinks)
 	createBotSink(&sinks, w)
 
-	log.Println("started the disclosure watcher")
-	w.Start(context.Background())
+	log.Println("starting the disclosure watcher")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	pool := NewPool(40)
+	w.Start(ctx)
 	for w.Next() {
 		for _, sink := range sinks {
 			d := w.Disclosure()
-			go sink(d)
+			pool.Run(func() { sink(d) })
+		}
+
+		if runOnce && w.Checks() > 0 && w.Inflight() == 0 {
+			pool.wg.Wait()
+			break
 		}
 	}
 }
@@ -164,4 +174,23 @@ func createBroadcastSink(sinks *[]SINKS.Sink) {
 
 	*sinks = append(*sinks, broadcast)
 	log.Println("added sink: telegram broadcast to channel", os.Getenv("BOT_CHANNEL"))
+}
+
+type Pool struct {
+	tokens chan struct{}
+	wg     *sync.WaitGroup
+}
+
+func NewPool(c int) *Pool {
+	return &Pool{make(chan struct{}, c), new(sync.WaitGroup)}
+}
+
+func (p *Pool) Run(op func()) {
+	p.tokens <- struct{}{}
+	p.wg.Add(1)
+	go func() {
+		defer func() { <-p.tokens }()
+		defer p.wg.Done()
+		op()
+	}()
 }
