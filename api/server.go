@@ -1,14 +1,25 @@
 package api
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/penguinpowernz/stonkcritter/models"
 )
 
 type Capabilities interface {
-	CheckNow()
+	// brain
 	ListCritters() ([]string, error)
+
+	// bot
 	Subs() []models.Sub
+
+	// watcher
+	CheckNow()
+	CurrentCursor() time.Time
+	Checks() int
+	Dispatched() int
+	Inflight() int
 }
 
 type Server struct {
@@ -20,9 +31,19 @@ func NewServer(capabilities Capabilities) *Server {
 }
 
 func (svr *Server) SetupRoutes(r gin.IRouter) {
+	r.GET("/", svr.getInfo)
 	r.GET("/critters", svr.listCritters)
 	r.GET("/subs", svr.listSubs)
 	r.PUT("/watcher/check", svr.checkNow)
+}
+
+func (svr *Server) getInfo(c *gin.Context) {
+	c.JSON(200, map[string]interface{}{
+		"checks":     svr.capabilities.Checks(),
+		"dispatched": svr.capabilities.Dispatched(),
+		"inflight":   svr.capabilities.Inflight(),
+		"cursor":     svr.capabilities.CurrentCursor().Format("2006-01-02"),
+	})
 }
 
 func (svr *Server) listSubs(c *gin.Context) {
