@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/penguinpowernz/stonkcritter/models"
 )
 
@@ -113,10 +114,13 @@ func (w *Watcher) Start(ctx context.Context) {
 	w.running = true
 
 	var getDisclosures = func() {
-		dd, err := w.provider()
-		if err != nil {
-			panic(err)
-		}
+		expo := backoff.NewExponentialBackOff()
+		var dd []models.Disclosure
+
+		backoff.Retry(func() (err error) {
+			dd, err = w.provider()
+			return err
+		}, expo)
 
 		w.dispatch(dd)
 		w.checked()
