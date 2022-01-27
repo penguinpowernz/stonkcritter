@@ -287,11 +287,6 @@ func (dis Disclosure) NormalString() string {
 		s += l3
 	}
 
-	s = strings.ReplaceAll(s, ".", `\.`)
-	s = strings.ReplaceAll(s, "(", `\(`)
-	s = strings.ReplaceAll(s, ")", `\)`)
-	s = strings.ReplaceAll(s, "-", `\-`)
-
 	s = bluemonday.StrictPolicy().Sanitize(s)
 
 	return s

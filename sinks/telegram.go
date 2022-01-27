@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,7 +33,8 @@ func TelegramChannel(botToken, botChannel string) (Sink, error) {
 		defer lock.Unlock()
 		channelLimit.Wait(context.Background())
 
-		_, err := b.Send(tb.ChatID(bcChan), d.String(), tb.ModeMarkdownV2, tb.NoPreview)
+		msg := tgEscape(d.String())
+		_, err := b.Send(tb.ChatID(bcChan), msg, tb.ModeMarkdownV2, tb.NoPreview)
 		logerr(err, "tgchannel", "sending broading message")
 		if err == nil {
 			Counts.TelegramChannel++
@@ -65,7 +67,7 @@ func TelegramBot(bot SubSender) Sink {
 				continue
 			}
 
-			msg := d.String()
+			msg := tgEscape(d.String())
 			if !shouldSend(s.ChatID, msg) { // check if we already sent this to the user
 				continue
 			}
@@ -82,4 +84,14 @@ func TelegramBot(bot SubSender) Sink {
 		Counts.TelegramBot++
 		return nil
 	}
+}
+
+func tgEscape(s string) string {
+	s = strings.ReplaceAll(s, ".", `\.`)
+	s = strings.ReplaceAll(s, "(", `\(`)
+	s = strings.ReplaceAll(s, ")", `\)`)
+	s = strings.ReplaceAll(s, "-", `\-`)
+	s = strings.ReplaceAll(s, "$", `\$`)
+	s = strings.ReplaceAll(s, ":", `\:`)
+	return s
 }
