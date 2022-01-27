@@ -27,6 +27,10 @@ func logit(name string, msg string, args ...interface{}) {
 }
 
 func logerr(err error, name string, msgs ...string) {
+	if err == nil {
+		return
+	}
+
 	msg := ""
 	if len(msgs) > 0 {
 		msg = msgs[0] + ": "

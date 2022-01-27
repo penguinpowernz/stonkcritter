@@ -170,19 +170,16 @@ func createMQTTSink(sinks *[]SINKS.Sink) {
 		return
 	}
 
-	topic := "stonk/critter/trades"
 	bits := strings.Split(mqttURL, "/")
 	url := bits[0]
-	if len(bits) > 1 {
-		topic = bits[1]
-	}
 
-	sink, err := SINKS.MQTT(url, os.Getenv("MQTT_CREDS"), topic)
+	sink, err := SINKS.MQTT(url, os.Getenv("MQTT_CREDS"))
 	if err != nil {
 		log.Println("ERROR: failed to create MQTT sink:", err)
 		return
 	}
 
+	log.Printf("creating MQTT sink connected to %s", url)
 	*sinks = append(*sinks, sink)
 }
 

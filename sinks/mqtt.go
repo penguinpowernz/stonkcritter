@@ -12,7 +12,7 @@ import (
 // MQTT will create a new sink that can be used to send the full disclosure object
 // as JSON over the given MQTT URL (e.g. localhost:1883) and creds (e.g. user:pass
 // or empty for unauthed), to the given topic.
-func MQTT(url, creds, topic string) (Sink, error) {
+func MQTT(url, creds string) (Sink, error) {
 	if !strings.Contains(url, ":") {
 		url += ":1883"
 	}
@@ -31,7 +31,7 @@ func MQTT(url, creds, topic string) (Sink, error) {
 
 	opts.OnConnect = connectHandler
 	opts.OnConnectionLost = connectLostHandler
-	return MQTTWithOptions(opts, topic)
+	return MQTTWithOptions(opts)
 }
 
 var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
@@ -43,17 +43,23 @@ var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err
 }
 
 // MQTTWithOptions will create a sync with the provided options.  It will send to the given topic.
-func MQTTWithOptions(opts *mqtt.ClientOptions, topic string) (Sink, error) {
+func MQTTWithOptions(opts *mqtt.ClientOptions) (Sink, error) {
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		return nil, token.Error()
 	}
 
 	return func(d models.Disclosure) error {
-		t := client.Publish(topic, 0, false, d.Bytes())
+		t := client.Publish("/stonkcritter/raw", 0, false, d.Bytes())
 		<-t.Done()
 		err := t.Error()
-		logerr(err, "mqtt", "while publishing")
+		logerr(err, "mqtt", "while publishing raw")
+
+		t = client.Publish("/stonkcritter/formatted", 0, false, d.String())
+		<-t.Done()
+		err = t.Error()
+		logerr(err, "mqtt", "while publishing formatted")
+
 		return err
 	}, nil
 }
