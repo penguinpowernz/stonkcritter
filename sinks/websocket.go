@@ -62,7 +62,7 @@ func Websockets(wsURL string) (Sink, error) {
 				continue
 			}
 
-			if err := c.WriteJSON(d); err != nil && (err == websocket.ErrCloseSent || err == io.EOF) {
+			if err := c.WriteJSON(NewPayload(d)); err != nil && (err == websocket.ErrCloseSent || err == io.EOF) {
 				conns[i] = nil
 			} else if err != nil {
 				logit("websocket", "ERROR: %s", err)

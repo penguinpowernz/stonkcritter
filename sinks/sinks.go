@@ -1,6 +1,7 @@
 package sinks
 
 import (
+	"encoding/json"
 	"log"
 	"os"
 
@@ -17,6 +18,23 @@ type Stats struct {
 	TelegramChannel int
 	TelegramBot     int
 	Writer          int
+}
+
+type Payload struct {
+	Formatted string            `json:"formatted"`
+	Raw       models.Disclosure `json:"raw"`
+}
+
+func NewPayload(d models.Disclosure) Payload {
+	return Payload{
+		Formatted: d.String(),
+		Raw:       d,
+	}
+}
+
+func (pl Payload) Bytes() []byte {
+	data, _ := json.Marshal(pl)
+	return data
 }
 
 var logger = log.New(os.Stderr, "", log.Flags())

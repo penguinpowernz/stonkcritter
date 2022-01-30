@@ -246,9 +246,9 @@ func (dis Disclosure) TypeEmoji() string {
 		adj = "🔁"
 	case "purchase":
 		adj = "🤑"
-	case "sale (full)":
+	case "sale (full)", "sale(full)", "sale_full":
 		adj = "🤮"
-	case "sale (partial)":
+	case "sale (partial)", "sale(partial)", "sale_partial":
 		adj = "🤢"
 	default:
 		adj = "🤷"
