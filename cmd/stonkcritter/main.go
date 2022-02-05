@@ -28,6 +28,7 @@ var (
 	wsURL      = os.Getenv("WS_URL")
 	natsURL    = os.Getenv("NATS_URL")
 	mqttURL    = os.Getenv("MQTT_URL")
+	webhookURL = os.Getenv("WEBHOOK_URL")
 
 	runAPI, runChat, quiet, downloadDump, runOnce bool
 )
@@ -39,6 +40,7 @@ func main() {
 	flag.StringVar(&wsURL, "w", wsURL, "the websockets URL and path (e.g. 127.0.0.1:8080/ws)")
 	flag.StringVar(&mqttURL, "m", mqttURL, "the MQTT URL and path (e.g. 127.0.0.1:1833/stonk/critter/trades)")
 	flag.StringVar(&natsURL, "n", natsURL, "the NATS URL and subject (e.g. nats://127.0.0.1:4222/stonk.critter.trades)")
+	flag.StringVar(&webhookURL, "k", webhookURL, "the webhook URL to post to (e.g. http://example.com/stonks)")
 	flag.BoolVar(&runChat, "chat", false, "enable Telegram communication")
 	flag.BoolVar(&runAPI, "api", false, "enable informational API")
 	flag.BoolVar(&quiet, "q", false, "don't log disclosure messages to terminal")
@@ -81,6 +83,7 @@ func main() {
 	createNATSSink(&sinks)
 	createMQTTSink(&sinks)
 	createWebsocketSink(&sinks)
+	createWebhookSink(&sinks)
 	createBroadcastSink(&sinks)
 	createBotSink(&sinks, w)
 
@@ -210,7 +213,17 @@ func createNATSSink(sinks *[]SINKS.Sink) {
 		return
 	}
 
+	log.Printf("creating NATS sink connected to %s, publishing on topic %s", url, subj)
 	*sinks = append(*sinks, SINKS.NATS(nc, subj))
+}
+
+func createWebhookSink(sinks *[]SINKS.Sink) {
+	if webhookURL == "" {
+		return
+	}
+
+	log.Printf("creating webhook sink connected to %s", webhookURL)
+	*sinks = append(*sinks, SINKS.Webhook(webhookURL))
 }
 
 func createWebsocketSink(sinks *[]SINKS.Sink) {
@@ -218,11 +231,12 @@ func createWebsocketSink(sinks *[]SINKS.Sink) {
 		return
 	}
 
-	sink, err := SINKS.Websockets("0.0.0.0:8080/ws")
+	sink, err := SINKS.Websockets(wsURL)
 	if err != nil {
 		return
 	}
 
+	log.Printf("creating WS sink running on %s", wsURL)
 	*sinks = append(*sinks, sink)
 }
 

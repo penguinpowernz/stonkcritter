@@ -78,6 +78,8 @@ func (w Watcher) Dispatched() int {
 	return w.dispatched
 }
 
+// Inflight tells how many disclosures are still waiting to be pulled from
+// the watcher (via the `Disclosure`` method)
 func (w Watcher) Inflight() int {
 	return w.inflight
 }
