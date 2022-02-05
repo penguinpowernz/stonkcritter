@@ -91,8 +91,10 @@ func main() {
 	pool := NewPool(40)
 	w.Start(ctx)
 	for w.Next() {
-		for _, sink := range sinks {
-			d := w.Disclosure()
+		d := w.Disclosure()
+
+		for i, sink := range sinks {
+			log.Printf("sending %s to sink %d", d.ID(), i)
 			pool.Run(func() { sink(d) })
 		}
 
