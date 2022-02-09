@@ -37,6 +37,17 @@ import (
 //     465  "PDF Disclosed Filing";
 //    6522  "Stock";
 
+//   COUNT TYPE OF TRADE
+//     120 exchange
+//      98 Exchange
+//     465 N/A
+//    6804 purchase
+//    4404 Purchase
+//    4179 sale_full
+//    2268 Sale(Full)
+//    1981 sale_partial
+//    1769 Sale(Partial)
+
 // {
 // 	"disclosure_year": 2021,
 // 	"disclosure_date": "10/22/2021",    MM/DD/YYYY
@@ -117,6 +128,18 @@ func (dis Disclosure) AssetTypeTopic() string {
 	default:
 		return "#stonk"
 	}
+}
+
+func (dis Disclosure) TradeType() string {
+	switch dis.Type {
+	case "Sale(Full)":
+		return "sale_full"
+	case "Sale(Partial)":
+		return "sale_partial"
+	}
+
+	t := strings.ToLower(dis.Type)
+	return t
 }
 
 func (dis Disclosure) OwnerString() string {
@@ -223,9 +246,9 @@ func (dis Disclosure) TypeEmoji() string {
 		adj = "🔁"
 	case "purchase":
 		adj = "🤑"
-	case "sale (full)":
+	case "sale (full)", "sale(full)", "sale_full":
 		adj = "🤮"
-	case "sale (partial)":
+	case "sale (partial)", "sale(partial)", "sale_partial":
 		adj = "🤢"
 	default:
 		adj = "🤷"
@@ -263,11 +286,6 @@ func (dis Disclosure) NormalString() string {
 		l3 := fmt.Sprintf("\n*%s%s*", dis.AssetType, dis.OwnerString())
 		s += l3
 	}
-
-	s = strings.ReplaceAll(s, ".", `\.`)
-	s = strings.ReplaceAll(s, "(", `\(`)
-	s = strings.ReplaceAll(s, ")", `\)`)
-	s = strings.ReplaceAll(s, "-", `\-`)
 
 	s = bluemonday.StrictPolicy().Sanitize(s)
 

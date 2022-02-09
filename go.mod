@@ -3,6 +3,7 @@ module github.com/penguinpowernz/stonkcritter
 go 1.16
 
 require (
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/dgraph-io/badger/v3 v3.2103.1
 	github.com/eclipse/paho.mqtt.golang v1.3.5
 	github.com/gin-gonic/gin v1.7.4

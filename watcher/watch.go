@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/penguinpowernz/stonkcritter/models"
 )
 
@@ -77,6 +78,8 @@ func (w Watcher) Dispatched() int {
 	return w.dispatched
 }
 
+// Inflight tells how many disclosures are still waiting to be pulled from
+// the watcher (via the `Disclosure`` method)
 func (w Watcher) Inflight() int {
 	return w.inflight
 }
@@ -113,10 +116,13 @@ func (w *Watcher) Start(ctx context.Context) {
 	w.running = true
 
 	var getDisclosures = func() {
-		dd, err := w.provider()
-		if err != nil {
-			panic(err)
-		}
+		expo := backoff.NewExponentialBackOff()
+		var dd []models.Disclosure
+
+		backoff.Retry(func() (err error) {
+			dd, err = w.provider()
+			return err
+		}, expo)
 
 		w.dispatch(dd)
 		w.checked()

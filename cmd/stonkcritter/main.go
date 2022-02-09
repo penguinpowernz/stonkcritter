@@ -16,6 +16,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/penguinpowernz/stonkcritter/api"
 	"github.com/penguinpowernz/stonkcritter/bot"
+	"github.com/penguinpowernz/stonkcritter/models"
 	SINKS "github.com/penguinpowernz/stonkcritter/sinks"
 	"github.com/penguinpowernz/stonkcritter/source"
 	"github.com/penguinpowernz/stonkcritter/watcher"
@@ -28,6 +29,7 @@ var (
 	wsURL      = os.Getenv("WS_URL")
 	natsURL    = os.Getenv("NATS_URL")
 	mqttURL    = os.Getenv("MQTT_URL")
+	webhookURL = os.Getenv("WEBHOOK_URL")
 
 	runAPI, runChat, quiet, downloadDump, runOnce bool
 )
@@ -39,6 +41,7 @@ func main() {
 	flag.StringVar(&wsURL, "w", wsURL, "the websockets URL and path (e.g. 127.0.0.1:8080/ws)")
 	flag.StringVar(&mqttURL, "m", mqttURL, "the MQTT URL and path (e.g. 127.0.0.1:1833/stonk/critter/trades)")
 	flag.StringVar(&natsURL, "n", natsURL, "the NATS URL and subject (e.g. nats://127.0.0.1:4222/stonk.critter.trades)")
+	flag.StringVar(&webhookURL, "k", webhookURL, "the webhook URL to post to (e.g. http://example.com/stonks)")
 	flag.BoolVar(&runChat, "chat", false, "enable Telegram communication")
 	flag.BoolVar(&runAPI, "api", false, "enable informational API")
 	flag.BoolVar(&quiet, "q", false, "don't log disclosure messages to terminal")
@@ -81,6 +84,7 @@ func main() {
 	createNATSSink(&sinks)
 	createMQTTSink(&sinks)
 	createWebsocketSink(&sinks)
+	createWebhookSink(&sinks)
 	createBroadcastSink(&sinks)
 	createBotSink(&sinks, w)
 
@@ -88,12 +92,19 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// we don't want the rate limiting of some things to affect other things so start a pool
 	pool := NewPool(40)
 	w.Start(ctx)
 	for w.Next() {
-		for _, sink := range sinks {
-			d := w.Disclosure()
-			pool.Run(func() { sink(d) })
+		d := w.Disclosure()
+
+		for i, sink := range sinks {
+			log.Printf("sending %s to sink %d", d.ID(), i)
+
+			// must call these inside the function to prevent variable scoping across loops
+			func(sink SINKS.Sink, d models.Disclosure) {
+				pool.Run(func() { sink(d) })
+			}(sink, d)
 		}
 
 		if runOnce && w.Checks() > 0 && w.Inflight() == 0 {
@@ -174,7 +185,11 @@ func createMQTTSink(sinks *[]SINKS.Sink) {
 	bits := strings.Split(mqttURL, "/")
 	url := bits[0]
 	if len(bits) > 1 {
-		topic = bits[1]
+		topic = strings.Join(bits[1:], "/")
+	}
+
+	if !strings.HasPrefix(topic, "/") {
+		topic = "/" + topic
 	}
 
 	sink, err := SINKS.MQTT(url, os.Getenv("MQTT_CREDS"), topic)
@@ -183,6 +198,7 @@ func createMQTTSink(sinks *[]SINKS.Sink) {
 		return
 	}
 
+	log.Printf("creating MQTT sink connected to %s, publishing on topic %s", url, topic)
 	*sinks = append(*sinks, sink)
 }
 
@@ -203,7 +219,17 @@ func createNATSSink(sinks *[]SINKS.Sink) {
 		return
 	}
 
+	log.Printf("creating NATS sink connected to %s, publishing on topic %s", url, subj)
 	*sinks = append(*sinks, SINKS.NATS(nc, subj))
+}
+
+func createWebhookSink(sinks *[]SINKS.Sink) {
+	if webhookURL == "" {
+		return
+	}
+
+	log.Printf("creating webhook sink connected to %s", webhookURL)
+	*sinks = append(*sinks, SINKS.Webhook(webhookURL))
 }
 
 func createWebsocketSink(sinks *[]SINKS.Sink) {
@@ -211,11 +237,12 @@ func createWebsocketSink(sinks *[]SINKS.Sink) {
 		return
 	}
 
-	sink, err := SINKS.Websockets("0.0.0.0:8080/ws")
+	sink, err := SINKS.Websockets(wsURL)
 	if err != nil {
 		return
 	}
 
+	log.Printf("creating WS sink running on %s", wsURL)
 	*sinks = append(*sinks, sink)
 }
 
