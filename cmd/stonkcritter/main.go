@@ -16,6 +16,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/penguinpowernz/stonkcritter/api"
 	"github.com/penguinpowernz/stonkcritter/bot"
+	"github.com/penguinpowernz/stonkcritter/models"
 	SINKS "github.com/penguinpowernz/stonkcritter/sinks"
 	"github.com/penguinpowernz/stonkcritter/source"
 	"github.com/penguinpowernz/stonkcritter/watcher"
@@ -91,6 +92,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// we don't want the rate limiting of some things to affect other things so start a pool
 	pool := NewPool(40)
 	w.Start(ctx)
 	for w.Next() {
@@ -98,7 +100,11 @@ func main() {
 
 		for i, sink := range sinks {
 			log.Printf("sending %s to sink %d", d.ID(), i)
-			pool.Run(func() { sink(d) })
+
+			// must call these inside the function to prevent variable scoping across loops
+			func(sink SINKS.Sink, d models.Disclosure) {
+				pool.Run(func() { sink(d) })
+			}(sink, d)
 		}
 
 		if runOnce && w.Checks() > 0 && w.Inflight() == 0 {
