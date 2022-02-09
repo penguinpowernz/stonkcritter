@@ -18,7 +18,7 @@ import (
 func TelegramChannel(botToken, botChannel string) (Sink, error) {
 	bcChan, err := strconv.ParseInt(botChannel, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse channel ID:", err)
+		return nil, fmt.Errorf("failed to parse channel ID: %s", err)
 	}
 
 	b, err := tb.NewBot(tb.Settings{Token: botToken})
