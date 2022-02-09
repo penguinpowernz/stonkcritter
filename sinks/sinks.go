@@ -21,14 +21,36 @@ type Stats struct {
 }
 
 type Payload struct {
-	Formatted string            `json:"formatted"`
-	Raw       models.Disclosure `json:"raw"`
+	D   models.Disclosure `json:"raw"`
+	C   string            `json:"critter"`
+	AT  string            `json:"asset_type"`
+	TT  string            `json:"ticker"`
+	TRT string            `json:"type"`
+	OB  string            `json:"owner"`
+	AE  string            `json:"amount_emojis"`
+	TE  string            `json:"type_emojis"`
+	ID  string            `json:"id"`
+	TD  string            `json:"transaction_date"`
+	DD  string            `json:"disclosure_date"`
+	PDF bool              `json:"is_pdf_disclosure"`
+	S   string            `json:"formatted_string"`
 }
 
-func NewPayload(d models.Disclosure) Payload {
+func NewPayload(dis models.Disclosure) Payload {
 	return Payload{
-		Formatted: d.String(),
-		Raw:       d,
+		D:   dis,
+		C:   dis.CritterName(),
+		AT:  dis.AssetTypeTopic(),
+		TT:  dis.TickerTopic(),
+		TRT: dis.TradeType(),
+		OB:  dis.OwnerString(),
+		AE:  dis.AmountEmojis(),
+		TE:  dis.TypeEmoji(),
+		ID:  dis.ID(),
+		TD:  dis.TransactionOn().Format("2006-01-02"),
+		DD:  dis.DisclosedOn().Format("2006-01-02"),
+		PDF: dis.IsPDFDisclosedFiling(),
+		S:   dis.String(),
 	}
 }
 
