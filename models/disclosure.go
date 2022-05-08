@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -131,14 +132,14 @@ func (dis Disclosure) AssetTypeTopic() string {
 }
 
 func (dis Disclosure) TradeType() string {
-	switch dis.Type {
-	case "Sale(Full)":
+	t := strings.ToLower(dis.Type)
+	switch t {
+	case "sale(full)", "sale (full)":
 		return "sale_full"
-	case "Sale(Partial)":
+	case "sale(partial)", "sale (partial)":
 		return "sale_partial"
 	}
 
-	t := strings.ToLower(dis.Type)
 	return t
 }
 
@@ -324,4 +325,92 @@ func (dd Disclosures) After(date time.Time) Disclosures {
 		}
 	}
 	return out
+}
+
+func (dd Disclosures) Filter(cb func(Disclosure) bool) Disclosures {
+	var out Disclosures
+	for _, d := range dd {
+		if cb(d) {
+			out = append(out, d)
+
+		}
+	}
+	return out
+}
+
+func (dd Disclosures) Each(cb func(Disclosure)) Disclosures {
+	for _, d := range dd {
+		cb(d)
+	}
+	return dd
+}
+
+func (dd Disclosures) Critters() []string {
+	var out []string
+	uniq := func(n string) bool {
+		for _, _n := range out {
+			if _n == n {
+				return false
+			}
+		}
+		return true
+	}
+
+	for _, d := range dd {
+		if !uniq(d.CritterName()) {
+			continue
+		}
+		out = append(out, d.CritterName())
+	}
+	return out
+}
+
+func (dd Disclosures) Tickers() []string {
+	var out []string
+	uniq := func(n string) bool {
+		for _, _n := range out {
+			if _n == n {
+				return false
+			}
+		}
+		return true
+	}
+
+	for _, d := range dd {
+		if !uniq(d.TickerString()) {
+			continue
+		}
+		out = append(out, d.TickerString())
+	}
+	return out
+}
+
+type SortByDisclosureDate struct {
+	dd Disclosures
+}
+
+func (x SortByDisclosureDate) Len() int { return len(x.dd) }
+func (x SortByDisclosureDate) Less(i, j int) bool {
+	return x.dd[i].DisclosedOn().Before(x.dd[j].DisclosedOn())
+}
+func (x SortByDisclosureDate) Swap(i, j int) { x.dd[i], x.dd[j] = x.dd[j], x.dd[i] }
+
+func (dd Disclosures) SortBy(sorter sort.Interface, reverse bool) Disclosures {
+	switch v := sorter.(type) {
+	case *SortByDisclosureDate:
+		v.dd = dd
+	}
+
+	if reverse {
+		sort.Sort(sort.Reverse(sorter))
+	} else {
+		sort.Sort(sorter)
+	}
+
+	switch v := sorter.(type) {
+	case *SortByDisclosureDate:
+		return v.dd
+	}
+
+	return dd
 }
