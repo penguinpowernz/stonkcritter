@@ -124,7 +124,7 @@ func parameterize(x string) string {
 func mastodonCritters(critters []string) string {
 	var lines []string
 
-	data := `{{.Username}} = Account.find_or_create_by(username: "{{.Username}}", display_name: "{{.Name}}", discoverable: true)
+	data := `{{.Username}} = Account.find_or_create_by(username: "{{.Username}}", display_name: "{{.Name}}", discoverable: true, avatar_filename: "{{.Avatar}}", avatar_file_size: 0, avatar_updated_at: DateTime.now)
 {{.Username}}.user = User.create(email: "{{.Username}}@mastodon.local", sign_up_ip: "127.0.0.1", password: "{{.Password}}", password_confirmation: "{{.Password}}", confirmed_at: DateTime.now, agreement: true) if {{.Username}}.user.nil?
 {{.Username}}.save`
 
@@ -138,11 +138,18 @@ func mastodonCritters(critters []string) string {
 		pw := fmt.Sprintf("%x", string(b))
 		uname := parameterize(name)
 
+		re := regexp.MustCompile(`^[^\.]*\. `)
+		bits := strings.Split(re.ReplaceAllString(name, ""), " ")
+		fname := bits[0]
+		lname := bits[len(bits)-1]
+		avatar := strings.ToLower(fname + "_" + lname)
+
 		view := struct {
 			Name     string
 			Username string
 			Password string
-		}{name, uname, pw}
+			Avatar   string
+		}{name, uname, pw, avatar}
 
 		buf := strings.Builder{}
 		tmpl.Execute(&buf, view)
