@@ -22,7 +22,7 @@ func Mastodon(w io.Writer, dd models.Disclosures) error {
 	return nil
 }
 
-func mastodonText() func(d models.Disclosure) string {
+func MastodonText() func(d models.Disclosure) string {
 	return func(d models.Disclosure) string {
 		desc := "#" + d.TickerString()
 		assetdesc := " (" + d.AssetDescription + ")"
@@ -53,7 +53,7 @@ func mastodonText() func(d models.Disclosure) string {
 		case "purchase":
 			verb = "purchased"
 		case "exchange":
-			verb = "exchange"
+			verb = "exchanged"
 		default:
 			verb = d.TradeType()
 		}
@@ -79,12 +79,18 @@ func mastodonText() func(d models.Disclosure) string {
 			who = "my spouse"
 		}
 
-		x := fmt.Sprintf("%s %s %s the %s; %s for %s%s", daysago, who, verb, assettyp, desc, d.Amount, assetdesc)
+		var text string
+		if assettyp == "PDF Disclosed Filing" {
+			text = fmt.Sprintf("%s %s made a trade.  I have disclosed this in a scanned PDF at %s", daysago, who, d.PtrLink)
+		} else {
+			text = fmt.Sprintf("%s %s %s the %s; %s for %s%s %s", daysago, who, verb, assettyp, desc, d.Amount, assetdesc, d.PtrLink)
+		}
+
 		p := bluemonday.StripTagsPolicy()
-		x = p.Sanitize(x)
-		x = strings.ReplaceAll(x, "&amp;", "&")
-		x = strings.ReplaceAll(x, "\"", "'")
-		return x
+		text = p.Sanitize(text)
+		text = strings.ReplaceAll(text, "&amp;", "&")
+		text = strings.ReplaceAll(text, "\"", "'")
+		return text
 	}
 }
 
@@ -93,17 +99,27 @@ func mastodonPost() func(d models.Disclosure) string {
 
 	tmpl, err := template.New("").Parse(data)
 	if err != nil {
+		panic(err)
 	}
 
-	render := mastodonText()
+	render := MastodonText()
 
 	return func(d models.Disclosure) string {
+		var title string
+		if d.Representative != "" {
+			title = "Rep."
+		}
+
+		if d.Senator != "" {
+			title = "Sen."
+
+		}
 		view := struct {
 			Text     string
 			Critter  string
 			CritterP string
 			Date     string
-		}{render(d), d.CritterName(), parameterize(d.CritterName()), d.TransactionOn().Format(time.RFC3339)}
+		}{render(d), title + " " + d.CritterName(), parameterize(d.CritterName()), d.TransactionOn().Format(time.RFC3339)}
 		b := strings.Builder{}
 		if err := tmpl.Execute(&b, &view); err != nil {
 			panic(err)
@@ -125,7 +141,7 @@ func mastodonCritters(critters []string) string {
 	var lines []string
 
 	data := `{{.Username}} = Account.find_or_create_by(username: "{{.Username}}", display_name: "{{.Name}}", discoverable: true, avatar_filename: "{{.Avatar}}", avatar_file_size: 0, avatar_updated_at: DateTime.now)
-{{.Username}}.user = User.create(email: "{{.Username}}@mastodon.local", sign_up_ip: "127.0.0.1", password: "{{.Password}}", password_confirmation: "{{.Password}}", confirmed_at: DateTime.now, agreement: true) if {{.Username}}.user.nil?
+{{.Username}}.user = User.create(email: "{{.Username}}@example.com", sign_up_ip: "127.0.0.1", password: "{{.Password}}", password_confirmation: "{{.Password}}", confirmed_at: DateTime.now, agreement: true) if {{.Username}}.user.nil?
 {{.Username}}.save`
 
 	tmpl := template.New("account")

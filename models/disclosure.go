@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -95,9 +94,20 @@ type Disclosure struct {
 	CapGainsOver200Usd bool   `json:"cap_gains_over_200_usd,omitempty"`
 }
 
-func (dis Disclosure) Bytes() []byte {
-	data, _ := json.Marshal(dis)
-	return data
+func (dis Disclosure) Map() map[string]interface{} {
+	return map[string]interface{}{
+		"transacted_on":    dis.TransactionOn().Format("2006-01-02"),
+		"disclosed_on":     dis.DisclosedOn().Format("2006-01-02"),
+		"days_to_disclose": dis.DaysToDisclose(),
+		"username":         parameterize(dis.CritterName()),
+		"name":             dis.FormalCritterName(),
+		"asset_type":       dis.AssetTypeString(),
+		"trade_type":       dis.TradeType(),
+		"ticker":           dis.TickerString(),
+		"amount":           dis.Amount,
+		"owner":            dis.OwnerString(),
+		"ptr_link":         dis.PtrLink,
+	}
 }
 
 func (dis Disclosure) CritterTopic() string {
@@ -156,7 +166,7 @@ func (dis Disclosure) OwnerString() string {
 	case "child":
 		return ", owned by their child"
 	case "--", "n/a":
-		return ", it is known who exactly owns this"
+		return ", it is not known who exactly owns this"
 	default:
 		return ", owned by" + dis.Owner
 	}
@@ -220,6 +230,10 @@ func (dis Disclosure) DaysAgo() string {
 	return fmt.Sprintf("%d", int((time.Now().Unix()-dis.TransactionOn().Unix())/86400))
 }
 
+func (dis Disclosure) DaysToDisclose() int {
+	return int(dis.DisclosedOn().Sub(dis.TransactionOn()).Seconds() / 86400)
+}
+
 func (dis Disclosure) IsPDFDisclosedFiling() bool {
 	return dis.AssetType == "PDF Disclosed Filing"
 }
@@ -255,6 +269,14 @@ func (dis Disclosure) TypeEmoji() string {
 		adj = "🤷"
 	}
 	return adj
+}
+
+func (dis Disclosure) FormalCritterName() string {
+	critter := "Rep. " + dis.Representative
+	if dis.Representative == "" {
+		critter = "Sen. " + dis.Senator
+	}
+	return critter
 }
 
 func (dis Disclosure) CritterName() string {
